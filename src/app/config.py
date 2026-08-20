@@ -4,8 +4,7 @@ import os
 from pathlib import Path
 
 import yaml
-from croniter import croniter
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 
 class LLMSettings(BaseModel):
@@ -38,31 +37,8 @@ class Settings(BaseModel):
     logging: LoggingSettings = Field(default_factory=LoggingSettings)
 
 
-class SiteConfig(BaseModel):
-    id: str
-    name: str
-    url: str
-    frequency: str
-    enabled: bool = True
-    wait_selector: str | None = None
-
-    @field_validator("frequency")
-    @classmethod
-    def validate_cron(cls, value: str) -> str:
-        if not croniter.is_valid(value):
-            raise ValueError(f"'{value}' is not a valid cron expression")
-        return value
-
-
 class AppConfig(BaseModel):
     settings: Settings
-    sites: list[SiteConfig]
-
-    def get_site(self, site_id: str) -> SiteConfig:
-        for site in self.sites:
-            if site.id == site_id:
-                return site
-        raise KeyError(f"No site with id '{site_id}' in config")
 
 
 def load_config(path: str | Path) -> AppConfig:

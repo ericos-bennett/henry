@@ -10,6 +10,8 @@ dependencies = [
     "croniter>=2.0",
     "python-dotenv>=1.0",
     "google-genai>=1.0",
+    "django>=5.0",
+    "psycopg[binary]>=3.1",
 ]
 
 [project.scripts]

@@ -5,7 +5,8 @@ from datetime import datetime, timezone
 
 from playwright.sync_api import sync_playwright
 
-from app.config import PlaywrightSettings, SiteConfig
+from app.config import PlaywrightSettings
+from app.models import Site
 
 
 @dataclass
@@ -18,7 +19,7 @@ class FetchResult:
     title: str
 
 
-def fetch_site(site: SiteConfig, settings: PlaywrightSettings) -> FetchResult:
+def fetch_site(site: Site, settings: PlaywrightSettings) -> FetchResult:
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=settings.headless)
         try:

@@ -1,33 +1,19 @@
 # Config Schema
 
-The application is configured entirely through a YAML file (default: `config/sites.yaml`). It has two top-level sections: `sites` (the list of career pages to track) and `settings` (global options).
-
-## `sites`
-
-Each entry describes one tracked career page:
-
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `id` | string | yes | Unique slug for the site (used as the folder name under `data/`). |
-| `name` | string | yes | Human-readable name (e.g. company name), for logs/output. |
-| `url` | string | yes | Career page URL to scrape. |
-| `frequency` | string | yes | How often to scrape, as a cron expression (e.g. `"0 */6 * * *"` for every 6 hours). |
-| `enabled` | boolean | no (default `true`) | Set `false` to keep a site in the config but skip scheduling it. |
-| `wait_selector` | string | no | CSS selector the Fetcher should wait for before considering the page loaded (useful for JS-rendered listings). |
-| `pagination` | object | no | Optional hints for multi-page/infinite-scroll listings (e.g. `{"type": "click", "selector": ".load-more", "max_pages": 5}`). Exact shape to be finalized in V2 — see [roadmap.md](./roadmap.md). |
+The application's process-level settings live in a YAML file (default: `config/settings.yaml`) with a single top-level `settings` section. The tracked site list itself is **not** in this file — it lives in Postgres (see [architecture.md](./architecture.md)) as the `Site` model, managed directly via SQL for now.
 
 ## `settings`
 
-Global options that apply across all sites unless overridden:
+Global options for the app:
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `llm.provider` | string | yes | Which LLM provider implementation to use by default (e.g. `"claude"`, `"openai"`). |
+| `llm.provider` | string | yes | Which LLM provider implementation to use by default (e.g. `"claude"`, `"gemini"`). |
 | `llm.model` | string | yes | Model name/id to use for extraction (e.g. `"claude-sonnet-5"`). |
 | `llm.api_key_env` | string | yes | Name of the environment variable holding the provider's API key (the key itself is never stored in this file). |
 | `playwright.headless` | boolean | no (default `true`) | Whether to run the browser headless. |
 | `playwright.timeout_ms` | number | no (default e.g. `30000`) | Navigation/wait timeout per page. |
-| `storage.root` | string | no (default `"data/"`) | Root directory for timestamped output files. |
+| `storage.root` | string | no (default `"data/"`) | Root directory for raw HTML debug dumps (job postings themselves go to Postgres, not this directory). |
 | `logging.level` | string | no (default `"info"`) | Log verbosity. |
 
 ## Example
@@ -45,17 +31,26 @@ settings:
     root: data/
   logging:
     level: info
-
-sites:
-  - id: acme-corp
-    name: Acme Corp
-    url: https://acme.example.com/careers
-    frequency: "0 */6 * * *"
-    wait_selector: ".job-listing"
-
-  - id: globex
-    name: Globex
-    url: https://globex.example.com/jobs
-    frequency: "0 0 * * *"
-    enabled: true
 ```
+
+## The `Site` model (Postgres)
+
+Each tracked career page is a row in the `Site` table (see `src/app/models.py`):
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string (PK) | Unique slug for the site (e.g. `"acme-corp"`). |
+| `name` | string | Human-readable name, for logs/output. |
+| `url` | string | Career page URL to scrape. |
+| `frequency` | string | Cron expression (e.g. `"0 */6 * * *"` for every 6 hours). |
+| `enabled` | boolean | Set `false` to keep a site around but skip scheduling it (default `true`). |
+| `wait_selector` | string, nullable | CSS selector the Fetcher should wait for before considering the page loaded (useful for JS-rendered listings). |
+
+Sites are added/edited directly via SQL against the local Postgres database for now, e.g.:
+
+```sql
+INSERT INTO app_site (id, name, url, frequency, enabled, wait_selector)
+VALUES ('acme-corp', 'Acme Corp', 'https://acme.example.com/careers', '0 */6 * * *', true, '.job-listing');
+```
+
+CLI tooling for site management (`sites add/list/remove`) may be added later — see [roadmap.md](./roadmap.md).

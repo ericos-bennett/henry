@@ -6,7 +6,8 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 
 from app.config import LLMSettings
-from app.schema import ExtractedJob, JobPosting
+from app.models import JobPosting, Site
+from app.schema import ExtractedJob
 
 EXTRACTION_PROMPT = (
     "You are given the visible text of a company's career page. "
@@ -67,17 +68,29 @@ def _make_job_id(site_id: str, extracted: ExtractedJob) -> str:
 def to_job_postings(
     extracted_jobs: list[ExtractedJob],
     *,
-    site_id: str,
-    source_url: str,
+    site: Site,
     scraped_at: datetime,
 ) -> list[JobPosting]:
-    return [
-        JobPosting(
-            **job.model_dump(),
-            job_id=_make_job_id(site_id, job),
-            source_site_id=site_id,
-            source_url=source_url,
-            scraped_at=scraped_at,
+    postings = []
+    for job in extracted_jobs:
+        salary = job.salary_range
+        postings.append(
+            JobPosting(
+                job_id=_make_job_id(site.id, job),
+                source_site=site,
+                source_url=site.url,
+                scraped_at=scraped_at,
+                title=job.title,
+                url=job.url,
+                location=job.location,
+                department=job.department,
+                employment_type=job.employment_type,
+                description=job.description,
+                posted_date=job.posted_date,
+                salary_min=salary.min if salary else None,
+                salary_max=salary.max if salary else None,
+                salary_currency=salary.currency if salary else None,
+                salary_raw=salary.raw if salary else None,
+            )
         )
-        for job in extracted_jobs
-    ]
+    return postings
