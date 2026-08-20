@@ -44,17 +44,10 @@ Job seekers, recruiters, and researchers often want to track job postings across
 
 All commands below are run from `backend/`.
 
-#### 1. Install dependencies
+#### 1. Configure environment
 
 ```sh
 cd backend
-uv sync
-uv run playwright install chromium
-```
-
-#### 2. Configure environment
-
-```sh
 cp .env.example .env
 ```
 
@@ -62,22 +55,22 @@ Fill in `.env`:
 - `LLM_API_KEY` — key for the provider set in `config/settings.yaml`'s `settings.llm.provider`
 - `DATABASE_URL` — connection string for your local Postgres instance
 
-#### 3. Set up the database
+#### 2. Create the database
 
 ```sh
 createdb career_scraper   # or whatever database name your DATABASE_URL points to
-uv run python manage.py migrate
 ```
 
-#### 4. Start the server
+#### 3. Start the server
 
 ```sh
-uv run python manage.py runserver 8000
+cd backend
+./backend-start.sh
 ```
 
-The API is now live at `http://127.0.0.1:8000/api/`. Django Ninja's interactive API console (Swagger UI) is at `http://127.0.0.1:8000/api/docs` — browse and try every endpoint from there without writing any `curl` commands.
+This installs Python dependencies (`uv sync`), installs the Playwright browser, runs database migrations, then starts the dev server — safe to re-run any time (each step is a no-op if already up to date). The API is now live at `http://127.0.0.1:8000/api/`. Django Ninja's interactive API console (Swagger UI) is at `http://127.0.0.1:8000/api/docs` — browse and try every endpoint from there without writing any `curl` commands.
 
-#### 5. Seed some companies
+#### 4. Seed some companies
 
 [`tests/test_seed_companies.py`](./backend/tests/test_seed_companies.py) creates 3 real companies (Uplight, Voltus, Development Seed) by hitting `POST /api/companies` on the server you just started — a quick way to bootstrap data on a fresh database. It's safe to re-run (companies that already exist are skipped). In a second terminal:
 
@@ -102,11 +95,10 @@ With the backend running on port 8000 (above), in a separate terminal:
 
 ```sh
 cd frontend
-npm install
-npm run dev
+./frontend-start.sh
 ```
 
-Opens at `http://localhost:5173/`. The Vite dev server proxies `/api/*` requests to `http://127.0.0.1:8000`, so no CORS setup is needed — just make sure the backend is running on port 8000 first.
+This installs npm dependencies and starts the dev server. Opens at `http://localhost:5173/`. The Vite dev server proxies `/api/*` requests to `http://127.0.0.1:8000`, so no CORS setup is needed — just make sure the backend is running on port 8000 first.
 
 ## Docs in this folder
 

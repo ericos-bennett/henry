@@ -83,6 +83,7 @@ This is a monorepo: `backend/` (Django Ninja API) and `frontend/` (React) are in
 henry/
 ├── docs/                      # this folder
 ├── backend/
+│   ├── backend-start.sh        # installs deps, migrates, starts the dev server
 │   ├── manage.py              # Django management commands (migrate, makemigrations, etc.)
 │   ├── pyproject.toml         # uv-managed Python deps
 │   ├── config/
@@ -107,6 +108,7 @@ henry/
 │           ├── storage.py     # save_job_postings(), write_raw_html()
 │           └── api.py         # REST endpoints
 └── frontend/
+    ├── frontend-start.sh       # installs npm deps, starts the dev server
     ├── package.json           # npm-managed dependencies (React, Vite, TypeScript)
     ├── vite.config.ts         # dev server + /api proxy to the backend
     └── src/
