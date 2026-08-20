@@ -8,7 +8,7 @@ This is a personal project for a single user, not a multi-tenant service. Decisi
 
 Goal: a working end-to-end pipeline for a small, hand-curated list of companies.
 
-- Config Loader for `config/settings.yaml` (see [config-schema.md](./config-schema.md)).
+- Config Loader for `backend/config/settings.yaml` (see [config-schema.md](./config-schema.md)).
 - Fetcher using Playwright (headless), with a basic navigation timeout (no retry logic or rate limiting — see V2).
 - Extractor: provider-agnostic LLM interface, with a Claude implementation as the default. Extracts from the career page's **listing view only** — no crawling into individual job detail pages (see decision below).
 - Company list and job posting output as structured records in Postgres via Django's ORM, chosen because the app is a Django Ninja backend (see [architecture.md](./architecture.md)) — done ahead of schedule, pulled forward from V3.

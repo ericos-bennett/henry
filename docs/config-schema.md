@@ -1,6 +1,6 @@
 # Config Schema
 
-The application's process-level settings live in a YAML file (default: `config/settings.yaml`) with a single top-level `settings` section. The tracked company list itself is **not** in this file — it lives in Postgres (see [architecture.md](./architecture.md)) as the `Company` model, managed via SQL or the `/api/companies` REST endpoints.
+The application's process-level settings live in a YAML file (default: `backend/config/settings.yaml`) with a single top-level `settings` section. The tracked company list itself is **not** in this file — it lives in Postgres (see [architecture.md](./architecture.md)) as the `Company` model, managed via SQL or the `/api/companies` REST endpoints.
 
 ## `settings`
 
@@ -35,7 +35,7 @@ settings:
 
 ## The `Company` model (Postgres)
 
-Each tracked career page is a row in the `Company` table (see `src/app/models.py`):
+Each tracked career page is a row in the `Company` table (see `backend/src/app/models.py`):
 
 | Field | Type | Description |
 |---|---|---|

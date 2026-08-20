@@ -1,6 +1,6 @@
 # Job Posting Schema
 
-Every extracted job listing is persisted as a row in Postgres's `JobPosting` table (`src/app/models.py`). This is the contract between the Extractor and the database (see [architecture.md](./architecture.md)).
+Every extracted job listing is persisted as a row in Postgres's `JobPosting` table (`backend/src/app/models.py`). This is the contract between the Extractor and the database (see [architecture.md](./architecture.md)).
 
 Since extraction is LLM-based across arbitrary company page layouts, quality and field availability vary by company — most fields beyond `title` are **best-effort and nullable**. The LLM itself returns a nested `salary_range` object (see `app.schema.ExtractedJob`/`SalaryRange`); the Extractor flattens it into four columns before the row is saved, since flat columns are what's queryable in SQL (e.g. `WHERE salary_min >= 100000`).
 

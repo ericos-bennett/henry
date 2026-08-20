@@ -3,10 +3,10 @@
 ## Components
 
 **Config Loader**
-Reads global settings (LLM provider, Playwright options, storage root for debug artifacts, logging level) from `config/settings.yaml` at startup (see [config-schema.md](./config-schema.md)). The tracked company list is *not* part of this file — see Persistence below.
+Reads global settings (LLM provider, Playwright options, storage root for debug artifacts, logging level) from `backend/config/settings.yaml` at startup (see [config-schema.md](./config-schema.md)). The tracked company list is *not* part of this file — see Persistence below.
 
 **Persistence (Django ORM + Postgres)**
-The company list and job posting outputs are structured records in Postgres, accessed via Django's ORM (`src/app/models.py`: `Company`, `JobPosting`). Django was adopted specifically because this app is a **Django Ninja** API backend — using Django's ORM means the API layer reuses the exact same models with no data-layer translation. Company rows are managed directly via SQL, or via the REST API's `POST`/`DELETE /api/companies` endpoints — see [config-schema.md](./config-schema.md).
+The company list and job posting outputs are structured records in Postgres, accessed via Django's ORM (`backend/src/app/models.py`: `Company`, `JobPosting`). Django was adopted specifically because this app is a **Django Ninja** API backend — using Django's ORM means the API layer reuses the exact same models with no data-layer translation. Company rows are managed directly via SQL, or via the REST API's `POST`/`DELETE /api/companies` endpoints — see [config-schema.md](./config-schema.md).
 
 **Scheduler** *(not yet built)*
 A long-running process component that keeps one schedule per company, triggering that company's scrape job when its configured frequency elapses, based on each `Company.frequency` cron expression. Each company's schedule is independent — companies don't wait on each other. Until this exists, scrapes are triggered on demand via `POST /api/companies/{id}/scrape`.
@@ -21,7 +21,7 @@ Takes the fetched page text and produces a list of `ExtractedJob` (Pydantic — 
 `save_job_postings()` bulk-inserts the run's `JobPosting` rows into Postgres. `write_raw_html()` separately writes the raw fetched HTML to `data/<company_id>/raw/<timestamp>.html` as a filesystem debug artifact (not part of the structured job data).
 
 **API (Django Ninja)**
-`src/app/api.py` defines the REST endpoints, mounted at `/api/` (`src/app/urls.py`):
+`backend/src/app/api.py` defines the REST endpoints, mounted at `/api/` (`backend/src/app/urls.py`):
 - `GET /api/companies`, `GET /api/companies/{id}` — list/get tracked companies.
 - `POST /api/companies` — create a company (validates `frequency` as a cron expression).
 - `DELETE /api/companies/{id}` — remove a company (cascades to its job postings).
