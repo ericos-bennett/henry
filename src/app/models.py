@@ -3,7 +3,7 @@ from __future__ import annotations
 from django.db import models
 
 
-class Site(models.Model):
+class Company(models.Model):
     id = models.CharField(max_length=100, primary_key=True)
     name = models.CharField(max_length=200)
     url = models.URLField(max_length=500)
@@ -17,7 +17,9 @@ class Site(models.Model):
 
 class JobPosting(models.Model):
     job_id = models.CharField(max_length=64)
-    source_site = models.ForeignKey(Site, on_delete=models.CASCADE, related_name="job_postings")
+    source_company = models.ForeignKey(
+        Company, on_delete=models.CASCADE, related_name="job_postings"
+    )
     source_url = models.URLField(max_length=500)
     scraped_at = models.DateTimeField()
 
@@ -39,8 +41,8 @@ class JobPosting(models.Model):
             models.UniqueConstraint(fields=["job_id", "scraped_at"], name="unique_job_per_run"),
         ]
         indexes = [
-            models.Index(fields=["source_site", "scraped_at"]),
+            models.Index(fields=["source_company", "scraped_at"]),
         ]
 
     def __str__(self) -> str:
-        return f"{self.title} ({self.source_site_id})"
+        return f"{self.title} ({self.source_company_id})"

@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 
 from app.config import LLMSettings
-from app.models import JobPosting, Site
+from app.models import Company, JobPosting
 from app.schema import ExtractedJob
 
 EXTRACTION_PROMPT = (
@@ -60,15 +60,15 @@ def get_extractor(settings: LLMSettings) -> LLMExtractor:
     raise NotImplementedError(f"No extractor implemented for provider '{settings.provider}'")
 
 
-def _make_job_id(site_id: str, extracted: ExtractedJob) -> str:
-    basis = f"{site_id}:{extracted.url or extracted.title}"
+def _make_job_id(company_id: str, extracted: ExtractedJob) -> str:
+    basis = f"{company_id}:{extracted.url or extracted.title}"
     return hashlib.sha1(basis.encode()).hexdigest()[:12]
 
 
 def to_job_postings(
     extracted_jobs: list[ExtractedJob],
     *,
-    site: Site,
+    company: Company,
     scraped_at: datetime,
 ) -> list[JobPosting]:
     postings = []
@@ -76,9 +76,9 @@ def to_job_postings(
         salary = job.salary_range
         postings.append(
             JobPosting(
-                job_id=_make_job_id(site.id, job),
-                source_site=site,
-                source_url=site.url,
+                job_id=_make_job_id(company.id, job),
+                source_company=company,
+                source_url=company.url,
                 scraped_at=scraped_at,
                 title=job.title,
                 url=job.url,

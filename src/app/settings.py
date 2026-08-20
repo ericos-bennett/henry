@@ -10,12 +10,15 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-secret-key-not-used-for-web-serving")
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-secret-key-change-for-real-deployment")
 DEBUG = True
 
 INSTALLED_APPS = [
     "app",
 ]
+
+ROOT_URLCONF = "app.urls"
+WSGI_APPLICATION = "app.wsgi.application"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 USE_TZ = True

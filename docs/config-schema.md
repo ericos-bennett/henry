@@ -1,6 +1,6 @@
 # Config Schema
 
-The application's process-level settings live in a YAML file (default: `config/settings.yaml`) with a single top-level `settings` section. The tracked site list itself is **not** in this file — it lives in Postgres (see [architecture.md](./architecture.md)) as the `Site` model, managed directly via SQL for now.
+The application's process-level settings live in a YAML file (default: `config/settings.yaml`) with a single top-level `settings` section. The tracked company list itself is **not** in this file — it lives in Postgres (see [architecture.md](./architecture.md)) as the `Company` model, managed via SQL or the `/api/companies` REST endpoints.
 
 ## `settings`
 
@@ -33,24 +33,30 @@ settings:
     level: info
 ```
 
-## The `Site` model (Postgres)
+## The `Company` model (Postgres)
 
-Each tracked career page is a row in the `Site` table (see `src/app/models.py`):
+Each tracked career page is a row in the `Company` table (see `src/app/models.py`):
 
 | Field | Type | Description |
 |---|---|---|
-| `id` | string (PK) | Unique slug for the site (e.g. `"acme-corp"`). |
+| `id` | string (PK) | Unique slug for the company (e.g. `"acme-corp"`). |
 | `name` | string | Human-readable name, for logs/output. |
 | `url` | string | Career page URL to scrape. |
 | `frequency` | string | Cron expression (e.g. `"0 */6 * * *"` for every 6 hours). |
-| `enabled` | boolean | Set `false` to keep a site around but skip scheduling it (default `true`). |
+| `enabled` | boolean | Set `false` to keep a company around but skip scheduling it (default `true`). |
 | `wait_selector` | string, nullable | CSS selector the Fetcher should wait for before considering the page loaded (useful for JS-rendered listings). |
 
-Sites are added/edited directly via SQL against the local Postgres database for now, e.g.:
+Companies can be added/edited either via SQL directly against the local Postgres database:
 
 ```sql
-INSERT INTO app_site (id, name, url, frequency, enabled, wait_selector)
+INSERT INTO app_company (id, name, url, frequency, enabled, wait_selector)
 VALUES ('acme-corp', 'Acme Corp', 'https://acme.example.com/careers', '0 */6 * * *', true, '.job-listing');
 ```
 
-CLI tooling for site management (`sites add/list/remove`) may be added later — see [roadmap.md](./roadmap.md).
+...or via the REST API (see [architecture.md](./architecture.md) for the full endpoint list):
+
+```sh
+curl -X POST http://127.0.0.1:8000/api/companies \
+  -H "Content-Type: application/json" \
+  -d '{"id": "acme-corp", "name": "Acme Corp", "url": "https://acme.example.com/careers", "frequency": "0 */6 * * *", "wait_selector": ".job-listing"}'
+```

@@ -6,6 +6,8 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, Field
 
+DEFAULT_CONFIG_PATH = "config/settings.yaml"
+
 
 class LLMSettings(BaseModel):
     provider: str
@@ -41,7 +43,7 @@ class AppConfig(BaseModel):
     settings: Settings
 
 
-def load_config(path: str | Path) -> AppConfig:
+def load_config(path: str | Path = DEFAULT_CONFIG_PATH) -> AppConfig:
     path = Path(path)
     with path.open("r") as f:
         raw = yaml.safe_load(f)
