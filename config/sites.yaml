@@ -1,0 +1,19 @@
+settings:
+  llm:
+    provider: claude
+    model: claude-sonnet-5
+    api_key_env: ANTHROPIC_API_KEY
+  playwright:
+    headless: true
+    timeout_ms: 30000
+  storage:
+    root: data/
+  logging:
+    level: info
+
+sites:
+  - id: voltus
+    name: Voltus
+    url: https://www.voltus.co/jobs
+    frequency: "0 */6 * * *"
+    wait_selector: 'a[href*="jobs.lever.co"]'
