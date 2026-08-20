@@ -14,6 +14,7 @@ class FetchResult:
     url: str
     fetched_at: datetime
     html: str
+    text: str
     title: str
 
 
@@ -26,6 +27,7 @@ def fetch_site(site: SiteConfig, settings: PlaywrightSettings) -> FetchResult:
             if site.wait_selector:
                 page.wait_for_selector(site.wait_selector, timeout=settings.timeout_ms)
             html = page.content()
+            text = page.inner_text("body")
             title = page.title()
         finally:
             browser.close()
@@ -35,5 +37,6 @@ def fetch_site(site: SiteConfig, settings: PlaywrightSettings) -> FetchResult:
         url=site.url,
         fetched_at=datetime.now(timezone.utc),
         html=html,
+        text=text,
         title=title,
     )

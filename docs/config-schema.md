@@ -37,7 +37,7 @@ settings:
   llm:
     provider: claude
     model: claude-sonnet-5
-    api_key_env: ANTHROPIC_API_KEY
+    api_key_env: LLM_API_KEY
   playwright:
     headless: true
     timeout_ms: 30000
