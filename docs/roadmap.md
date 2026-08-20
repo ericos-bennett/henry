@@ -20,7 +20,7 @@ Goal: a working end-to-end pipeline for a small, hand-curated list of companies.
 - **Scheduler**: run each company's scrape automatically on its configured `frequency`, instead of only on demand via `POST /api/companies/{id}/scrape`.
 - **Diffing/change detection**: compare each run's results to the previous one for that company and record new/changed/removed jobs.
 - Pagination / infinite-scroll support in the Fetcher, driven by per-company config hints.
-- Per-company fetch customization beyond `wait_selector` (e.g. custom headers, cookies/auth if needed).
+- Per-company fetch customization (e.g. a wait-for-selector override, custom headers, cookies/auth) if network-idle alone proves insufficient for some pages — dropped from v1's `Company` model since it's not something a user can supply upfront without inspecting the page first (see [Decisions](#decisions)).
 - robots.txt compliance and configurable rate limiting/politeness between requests.
 - Retry/backoff and dead-letter handling for persistently failing companies.
 - `PATCH /api/companies/{id}` for partial updates (e.g. toggling `enabled`), and moving `POST /api/companies/{id}/scrape` off the request/response cycle (background task queue) so it doesn't block on Playwright + LLM latency.
@@ -36,6 +36,7 @@ Goal: a working end-to-end pipeline for a small, hand-curated list of companies.
 
 - **Detail-page depth**: resolved for v1 — extraction works from the career page's listing view only (title/location/link/whatever summary is shown there). No per-job detail-page visits. Revisit in V2 if listing pages don't carry enough info (e.g. `description` ends up too sparse to be useful).
 - **LLM cost**: not a v1 design constraint. This is a single-user, small-company-list project, so per-run token usage is low and not worth optimizing for yet. Revisit only if the company list or frequency grows significantly.
+- **`wait_selector`**: removed from the `Company` model. It required knowing a CSS selector for a page's rendered content, which isn't something a user can supply when first adding a company — it's only discoverable by inspecting the page (or hitting a failed/incomplete scrape) after the fact. The Fetcher relies solely on Playwright's network-idle wait for now; revisit as a per-company override in V2 if that proves insufficient for some pages.
 
 ## Open questions / risks
 

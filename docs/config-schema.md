@@ -44,13 +44,12 @@ Each tracked career page is a row in the `Company` table (see `src/app/models.py
 | `url` | string | Career page URL to scrape. |
 | `frequency` | string | Cron expression (e.g. `"0 */6 * * *"` for every 6 hours). |
 | `enabled` | boolean | Set `false` to keep a company around but skip scheduling it (default `true`). |
-| `wait_selector` | string, nullable | CSS selector the Fetcher should wait for before considering the page loaded (useful for JS-rendered listings). |
 
 Companies can be added/edited either via SQL directly against the local Postgres database:
 
 ```sql
-INSERT INTO app_company (id, name, url, frequency, enabled, wait_selector)
-VALUES ('acme-corp', 'Acme Corp', 'https://acme.example.com/careers', '0 */6 * * *', true, '.job-listing');
+INSERT INTO app_company (id, name, url, frequency, enabled)
+VALUES ('acme-corp', 'Acme Corp', 'https://acme.example.com/careers', '0 */6 * * *', true);
 ```
 
 ...or via the REST API (see [architecture.md](./architecture.md) for the full endpoint list):
@@ -58,5 +57,5 @@ VALUES ('acme-corp', 'Acme Corp', 'https://acme.example.com/careers', '0 */6 * *
 ```sh
 curl -X POST http://127.0.0.1:8000/api/companies \
   -H "Content-Type: application/json" \
-  -d '{"id": "acme-corp", "name": "Acme Corp", "url": "https://acme.example.com/careers", "frequency": "0 */6 * * *", "wait_selector": ".job-listing"}'
+  -d '{"id": "acme-corp", "name": "Acme Corp", "url": "https://acme.example.com/careers", "frequency": "0 */6 * * *"}'
 ```

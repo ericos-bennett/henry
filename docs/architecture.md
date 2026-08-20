@@ -12,7 +12,7 @@ The company list and job posting outputs are structured records in Postgres, acc
 A long-running process component that keeps one schedule per company, triggering that company's scrape job when its configured frequency elapses, based on each `Company.frequency` cron expression. Each company's schedule is independent — companies don't wait on each other. Until this exists, scrapes are triggered on demand via `POST /api/companies/{id}/scrape`.
 
 **Fetcher (Playwright)**
-Given a `Company` row's URL, launches/reuses a headless browser session, navigates to the page, waits for content to render (network idle and/or `Company.wait_selector`), and returns the rendered HTML/text. Handles basic pagination/infinite-scroll if configured for that company (see open questions in [roadmap.md](./roadmap.md) for depth-of-crawl decisions). Applies a request timeout; retry/backoff and rate limiting are out of scope for V1 (see [roadmap.md](./roadmap.md)).
+Given a `Company` row's URL, launches/reuses a headless browser session, navigates to the page, waits for network idle, and returns the rendered HTML/text. Handles basic pagination/infinite-scroll if configured for that company (see open questions in [roadmap.md](./roadmap.md) for depth-of-crawl decisions). Applies a request timeout; retry/backoff and rate limiting are out of scope for V1 (see [roadmap.md](./roadmap.md)).
 
 **Extractor (LLM, provider-agnostic)**
 Takes the fetched page text and produces a list of `ExtractedJob` (Pydantic — see [job-schema.md](./job-schema.md)). Defined behind an abstract interface (`LLMExtractor.extract(content: str) -> list[ExtractedJob]`) so the concrete provider is swappable via `settings.llm` — Claude is the recommended default implementation, with Gemini currently wired up for free-tier testing. Uses structured JSON output so the LLM's response conforms to the schema rather than free-form text. `to_job_postings()` then converts each `ExtractedJob` into an (unsaved) `JobPosting` model instance, flattening `salary_range` into flat columns and attaching the `Company` FK, `source_url`, and `scraped_at`.
@@ -28,6 +28,8 @@ Takes the fetched page text and produces a list of `ExtractedJob` (Pydantic — 
 - `GET /api/companies/{id}/jobs` — a company's postings, with a `latest_only` filter for just the most recent scrape.
 - `GET /api/jobs` — search across all companies (filters: `company_id`, `location`, `salary_min`).
 - `POST /api/companies/{id}/scrape` — runs Fetcher → Extractor → Storage synchronously for one company and returns a summary (`jobs_found`, `scraped_at`). Runs inline on the request (no background task queue yet), so this call blocks for as long as the fetch + LLM call take.
+
+Django Ninja auto-generates an interactive API console (Swagger UI) at `GET /api/docs`, plus the raw OpenAPI schema at `GET /api/openapi.json`. Rendering `/api/docs` requires Django's template engine, so `settings.py` configures a minimal `TEMPLATES` entry purely for this — nothing else in the project uses Django templates.
 
 **Logging & error handling**
 Structured, per-run logs (company id, start/end time, success/failure, counts of jobs extracted). Per-company isolation means one company's persistent failure (e.g. site down, blocked, LLM can't parse) doesn't affect scraping other companies.

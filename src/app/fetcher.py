@@ -25,8 +25,6 @@ def fetch_company(company: Company, settings: PlaywrightSettings) -> FetchResult
         try:
             page = browser.new_page()
             page.goto(company.url, wait_until="networkidle", timeout=settings.timeout_ms)
-            if company.wait_selector:
-                page.wait_for_selector(company.wait_selector, timeout=settings.timeout_ms)
             html = page.content()
             text = page.inner_text("body")
             title = page.title()

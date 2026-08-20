@@ -9,7 +9,6 @@ class Company(models.Model):
     url = models.URLField(max_length=500)
     frequency = models.CharField(max_length=100)
     enabled = models.BooleanField(default=True)
-    wait_selector = models.CharField(max_length=300, null=True, blank=True)
 
     def __str__(self) -> str:
         return self.id

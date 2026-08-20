@@ -12,7 +12,7 @@ from app.models import Company, JobPosting
 class CompanyOut(ModelSchema):
     class Meta:
         model = Company
-        fields = ["id", "name", "url", "frequency", "enabled", "wait_selector"]
+        fields = ["id", "name", "url", "frequency", "enabled"]
 
 
 class CompanyIn(Schema):
@@ -21,7 +21,6 @@ class CompanyIn(Schema):
     url: str
     frequency: str
     enabled: bool = True
-    wait_selector: str | None = None
 
     @field_validator("frequency")
     @classmethod

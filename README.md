@@ -57,27 +57,30 @@ createdb career_scraper   # or whatever database name your DATABASE_URL points t
 uv run python manage.py migrate
 ```
 
-### 4. Add a company to scrape
-
-Companies are managed directly via SQL for now (see [config-schema.md](./docs/config-schema.md)):
-
-```sql
-INSERT INTO app_company (id, name, url, frequency, enabled, wait_selector)
-VALUES ('acme-corp', 'Acme Corp', 'https://acme.example.com/careers', '0 */6 * * *', true, NULL);
-```
-
-### 5. Start the server
+### 4. Start the server
 
 ```sh
 uv run python manage.py runserver 8000
 ```
 
-The API is now live at `http://127.0.0.1:8000/api/`. A few things to try:
+The API is now live at `http://127.0.0.1:8000/api/`. Django Ninja's interactive API console (Swagger UI) is at `http://127.0.0.1:8000/api/docs` — browse and try every endpoint from there without writing any `curl` commands.
+
+### 5. Seed some companies
+
+[`tests/test_seed_companies.py`](./tests/test_seed_companies.py) creates 3 real companies (Uplight, Voltus, Development Seed) by hitting `POST /api/companies` on the server you just started — a quick way to bootstrap data on a fresh database. It's safe to re-run (companies that already exist are skipped). In a second terminal:
+
+```sh
+uv run python tests/test_seed_companies.py
+```
+
+Companies are also manageable directly via SQL — see [config-schema.md](./docs/config-schema.md).
+
+A few things to try once you have data:
 
 ```sh
 curl http://127.0.0.1:8000/api/companies
-curl -X POST http://127.0.0.1:8000/api/companies/acme-corp/scrape
-curl http://127.0.0.1:8000/api/companies/acme-corp/jobs
+curl -X POST http://127.0.0.1:8000/api/companies/voltus/scrape
+curl http://127.0.0.1:8000/api/companies/voltus/jobs
 ```
 
 ## Docs in this folder
