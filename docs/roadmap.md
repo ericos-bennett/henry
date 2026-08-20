@@ -29,7 +29,7 @@ Goal: a working end-to-end pipeline for a small, hand-curated list of companies.
 ## V3 — Usability
 
 - Notifications (email/Slack) when new jobs are detected, built on top of V2's diffing.
-- Dashboard/UI for managing tracked companies and browsing job history, built on the existing REST API.
+- Expand the `frontend/` app beyond its current single page (create/delete companies, richer job browsing/filtering, scrape status/history) — done ahead of schedule as a minimal first pass, pulled forward from V3.
 - Cross-company deduplication (the same role posted to multiple boards/aggregators).
 
 ## Decisions

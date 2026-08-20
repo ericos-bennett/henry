@@ -10,6 +10,7 @@ Job seekers, recruiters, and researchers often want to track job postings across
 - On demand (via a REST API), fetches the rendered page (headless browser, to handle JS-heavy sites).
 - Uses an LLM to translate the scraped content into structured job listings (title, location, department, salary, etc.) — no per-company parser required.
 - Saves each run's results as `JobPosting` rows in Postgres, so history accumulates as a series of scrapes per company.
+- A small React frontend lists companies, triggers scrapes, and browses job results, on top of the same REST API.
 
 ## Goals (v1 / MVP)
 
@@ -22,25 +23,36 @@ Job seekers, recruiters, and researchers often want to track job postings across
 
 - No diffing/change-detection between runs (snapshot only — see [roadmap.md](./docs/roadmap.md) for when this comes in).
 - No scheduler yet — scrapes are triggered on demand via the API, not run automatically on each company's `frequency`.
-- No web UI/dashboard — REST API only.
 - No notifications (email/Slack) on new postings.
+
+## Repo layout
+
+- **`backend/`** — Django + Django Ninja REST API, Postgres via Django's ORM, the Playwright fetcher, and the LLM extractor.
+- **`frontend/`** — React + TypeScript (Vite) single-page app that talks to the backend API.
+- **`docs/`** — architecture, schema, and roadmap docs (see links at the bottom of this file).
 
 ## Getting started
 
 ### Prerequisites
 
 - Python 3.11+ and [uv](https://docs.astral.sh/uv/)
+- Node.js and npm
 - A local Postgres instance running
-- An API key for whichever LLM provider `config/settings.yaml` points to (Gemini's free tier works fine for testing)
+- An API key for whichever LLM provider `backend/config/settings.yaml` points to (Gemini's free tier works fine for testing)
 
-### 1. Install dependencies
+### Backend
+
+All commands below are run from `backend/`.
+
+#### 1. Install dependencies
 
 ```sh
+cd backend
 uv sync
 uv run playwright install chromium
 ```
 
-### 2. Configure environment
+#### 2. Configure environment
 
 ```sh
 cp .env.example .env
@@ -50,14 +62,14 @@ Fill in `.env`:
 - `LLM_API_KEY` — key for the provider set in `config/settings.yaml`'s `settings.llm.provider`
 - `DATABASE_URL` — connection string for your local Postgres instance
 
-### 3. Set up the database
+#### 3. Set up the database
 
 ```sh
 createdb career_scraper   # or whatever database name your DATABASE_URL points to
 uv run python manage.py migrate
 ```
 
-### 4. Start the server
+#### 4. Start the server
 
 ```sh
 uv run python manage.py runserver 8000
@@ -65,11 +77,12 @@ uv run python manage.py runserver 8000
 
 The API is now live at `http://127.0.0.1:8000/api/`. Django Ninja's interactive API console (Swagger UI) is at `http://127.0.0.1:8000/api/docs` — browse and try every endpoint from there without writing any `curl` commands.
 
-### 5. Seed some companies
+#### 5. Seed some companies
 
-[`tests/test_seed_companies.py`](./tests/test_seed_companies.py) creates 3 real companies (Uplight, Voltus, Development Seed) by hitting `POST /api/companies` on the server you just started — a quick way to bootstrap data on a fresh database. It's safe to re-run (companies that already exist are skipped). In a second terminal:
+[`tests/test_seed_companies.py`](./backend/tests/test_seed_companies.py) creates 3 real companies (Uplight, Voltus, Development Seed) by hitting `POST /api/companies` on the server you just started — a quick way to bootstrap data on a fresh database. It's safe to re-run (companies that already exist are skipped). In a second terminal:
 
 ```sh
+cd backend
 uv run python tests/test_seed_companies.py
 ```
 
@@ -82,6 +95,18 @@ curl http://127.0.0.1:8000/api/companies
 curl -X POST http://127.0.0.1:8000/api/companies/voltus/scrape
 curl http://127.0.0.1:8000/api/companies/voltus/jobs
 ```
+
+### Frontend
+
+With the backend running on port 8000 (above), in a separate terminal:
+
+```sh
+cd frontend
+npm install
+npm run dev
+```
+
+Opens at `http://localhost:5173/`. The Vite dev server proxies `/api/*` requests to `http://127.0.0.1:8000`, so no CORS setup is needed — just make sure the backend is running on port 8000 first.
 
 ## Docs in this folder
 

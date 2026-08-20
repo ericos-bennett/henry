@@ -34,6 +34,9 @@ Django Ninja auto-generates an interactive API console (Swagger UI) at `GET /api
 **Logging & error handling**
 Structured, per-run logs (company id, start/end time, success/failure, counts of jobs extracted). Per-company isolation means one company's persistent failure (e.g. site down, blocked, LLM can't parse) doesn't affect scraping other companies.
 
+**Frontend (React + Vite)**
+`frontend/` is a single-page React + TypeScript app (`frontend/src/App.tsx`) that talks to the same REST API: lists companies, triggers `POST /api/companies/{id}/scrape` and shows the result, expands a company to view its latest job postings, and has a small form for `POST /api/companies`. It's a separate app from the backend (own `package.json`, own dev server on port 5173) — no server-side rendering or backend template involvement. In development, Vite's dev server proxies `/api/*` requests to `http://127.0.0.1:8000` (`frontend/vite.config.ts`), so no CORS configuration is needed on the Django side.
+
 ## Data flow
 
 ```
@@ -74,28 +77,39 @@ Config Loader                                Company.objects.get(pk=...)
 
 ## Repo structure
 
+This is a monorepo: `backend/` (Django Ninja API) and `frontend/` (React) are independent apps with their own dependency manifests and dev servers, sharing only the REST API contract between them.
+
 ```
 henry/
-├── docs/                     # this folder
-├── config/
-│   └── settings.yaml         # LLM/Playwright/storage/logging settings only — no company list
-├── data/
-│   └── <company_id>/
-│       └── raw/<timestamp>.html   # raw HTML debug dumps only; job postings live in Postgres
-├── manage.py                 # Django management commands (migrate, makemigrations, etc.)
-├── src/
-│   └── app/
-│       ├── settings.py       # Django settings (DATABASE_URL, INSTALLED_APPS=["app"])
-│       ├── urls.py           # mounts the Ninja API at /api/
-│       ├── wsgi.py / asgi.py # standard Django entry points
-│       ├── models.py         # Company, JobPosting (Django models)
-│       ├── migrations/       # Django migrations
-│       ├── config.py         # Config Loader (Pydantic, settings.yaml only)
-│       ├── fetcher.py        # Playwright-based Fetcher
-│       ├── extractor.py      # LLM Extractor interface + provider implementations
-│       ├── schema.py         # ExtractedJob/SalaryRange (LLM-facing Pydantic contract)
-│       ├── schemas.py        # Ninja request/response schemas (CompanyIn/Out, JobPostingOut, ScrapeResult)
-│       ├── storage.py        # save_job_postings(), write_raw_html()
-│       └── api.py            # REST endpoints
-└── tests/
+├── docs/                      # this folder
+├── backend/
+│   ├── manage.py              # Django management commands (migrate, makemigrations, etc.)
+│   ├── pyproject.toml         # uv-managed Python deps
+│   ├── config/
+│   │   └── settings.yaml      # LLM/Playwright/storage/logging settings only — no company list
+│   ├── data/
+│   │   └── <company_id>/
+│   │       └── raw/<timestamp>.html   # raw HTML debug dumps only; job postings live in Postgres
+│   ├── tests/
+│   │   └── test_seed_companies.py     # hits the live API to bootstrap 3 real companies
+│   └── src/
+│       └── app/
+│           ├── settings.py    # Django settings (DATABASE_URL, INSTALLED_APPS=["app"])
+│           ├── urls.py        # mounts the Ninja API at /api/
+│           ├── wsgi.py / asgi.py  # standard Django entry points
+│           ├── models.py      # Company, JobPosting (Django models)
+│           ├── migrations/    # Django migrations
+│           ├── config.py      # Config Loader (Pydantic, settings.yaml only)
+│           ├── fetcher.py     # Playwright-based Fetcher
+│           ├── extractor.py   # LLM Extractor interface + provider implementations
+│           ├── schema.py      # ExtractedJob/SalaryRange (LLM-facing Pydantic contract)
+│           ├── schemas.py     # Ninja request/response schemas (CompanyIn/Out, JobPostingOut, ScrapeResult)
+│           ├── storage.py     # save_job_postings(), write_raw_html()
+│           └── api.py         # REST endpoints
+└── frontend/
+    ├── package.json           # npm-managed dependencies (React, Vite, TypeScript)
+    ├── vite.config.ts         # dev server + /api proxy to the backend
+    └── src/
+        ├── App.tsx            # the single page: company list, scrape trigger, job viewer
+        └── api.ts             # typed fetch client for the backend REST API
 ```
