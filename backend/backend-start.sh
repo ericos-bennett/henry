@@ -2,7 +2,11 @@
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
+set -a
+[ -f .env ] && source .env
+set +a
+
 uv sync
 uv run playwright install chromium
 uv run python manage.py migrate
-uv run python manage.py runserver 8000
+uv run python manage.py runserver "${DJANGO_RUNSERVER_ADDR:-8000}"

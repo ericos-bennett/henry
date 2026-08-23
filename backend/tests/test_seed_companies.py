@@ -29,19 +29,19 @@ TEST_COMPANIES = [
         "id": "uplight",
         "name": "Uplight",
         "url": "https://jobs.jobvite.com/uplight/jobs",
-        "frequency": "0 */6 * * *",
+        "frequency": "0 * * * *",
     },
     {
         "id": "voltus",
         "name": "Voltus",
         "url": "https://www.voltus.co/jobs",
-        "frequency": "0 */6 * * *",
+        "frequency": "0 * * * *",
     },
     {
         "id": "developmentseed",
         "name": "Development Seed",
         "url": "https://developmentseed.org/careers/",
-        "frequency": "0 0 * * *",
+        "frequency": "0 * * * *",
     },
 ]
 

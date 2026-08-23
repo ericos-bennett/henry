@@ -1,0 +1,65 @@
+from __future__ import annotations
+
+import logging
+import threading
+import time
+from datetime import datetime, timedelta, timezone
+
+from croniter import croniter
+from django.db import close_old_connections
+
+from app.models import Company
+from app.pipeline import run_scrape
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+def tick(now: datetime | None = None) -> None:
+    """Check all enabled companies against `now` (default: current UTC time,
+    truncated to the top of the hour) and scrape any whose cron expression
+    matches.
+
+    Callable directly (e.g. from `manage.py shell`) for manual verification
+    without waiting for the real hourly loop.
+    """
+    now = (now or datetime.now(timezone.utc)).replace(minute=0, second=0, microsecond=0)
+    logger.info("scheduler tick at %s", now.isoformat())
+
+    close_old_connections()
+    for company in Company.objects.filter(enabled=True):
+        try:
+            due = croniter.match(company.frequency, now)
+        except Exception:
+            logger.exception("scheduler: invalid cron for %s: %r", company.id, company.frequency)
+            continue
+        if not due:
+            continue
+
+        logger.info("scheduler: %s is due, scraping", company.id)
+        try:
+            run_scrape(company)
+        except Exception:
+            logger.exception("scheduler: scrape failed for %s", company.id)
+        finally:
+            close_old_connections()
+
+
+def _seconds_until_next_hour(now: datetime | None = None) -> float:
+    now = now or datetime.now(timezone.utc)
+    next_hour = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+    return (next_hour - now).total_seconds()
+
+
+def _run_loop() -> None:
+    while True:
+        time.sleep(_seconds_until_next_hour())
+        try:
+            tick()
+        except Exception:
+            logger.exception("scheduler: tick raised unexpectedly")
+
+
+def start() -> None:
+    threading.Thread(target=_run_loop, name="company-scrape-scheduler", daemon=True).start()
+    logger.info("scheduler thread started")
