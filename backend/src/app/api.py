@@ -10,7 +10,7 @@ from ninja import NinjaAPI
 from app.extractor import ExtractionError
 from app.models import Company, JobPosting
 from app.pipeline import run_scrape
-from app.schemas import CompanyIn, CompanyOut, JobPostingOut, ScrapeResult
+from app.schemas import CompanyIn, CompanyOut, CompanyPatch, JobPostingOut, ScrapeResult
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +41,14 @@ def get_company(request, company_id: str):
 def create_company(request, payload: CompanyIn):
     company = Company.objects.create(id=slugify(payload.name), **payload.dict())
     return 201, company
+
+
+@api.patch("/companies/{company_id}", response=CompanyOut)
+def update_company(request, company_id: str, payload: CompanyPatch):
+    company = get_object_or_404(Company, pk=company_id)
+    company.enabled = payload.enabled
+    company.save()
+    return company
 
 
 @api.delete("/companies/{company_id}")

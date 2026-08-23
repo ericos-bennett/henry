@@ -58,6 +58,12 @@ export const api = {
       body: JSON.stringify(company),
     }),
 
+  setCompanyEnabled: (id: string, enabled: boolean) =>
+    request<Company>(`/api/companies/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ enabled }),
+    }),
+
   deleteCompany: (id: string) =>
     request<{ success: boolean }>(`/api/companies/${id}`, { method: 'DELETE' }),
 

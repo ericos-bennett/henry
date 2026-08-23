@@ -37,6 +37,10 @@ class CompanyIn(Schema):
         return value
 
 
+class CompanyPatch(Schema):
+    enabled: bool
+
+
 class JobPostingOut(ModelSchema):
     class Meta:
         model = JobPosting

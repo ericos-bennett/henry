@@ -81,6 +81,15 @@ function App() {
     }
   }
 
+  const toggleEnabled = async (company: Company) => {
+    try {
+      const updated = await api.setCompanyEnabled(company.id, !company.enabled)
+      setCompanies((prev) => prev.map((c) => (c.id === company.id ? updated : c)))
+    } catch (e) {
+      setError(String(e))
+    }
+  }
+
   const removeCompany = async (id: string) => {
     try {
       await api.deleteCompany(id)
@@ -120,7 +129,7 @@ function App() {
                   <a href={company.url} target="_blank" rel="noreferrer">
                     {company.url}
                   </a>{' '}
-                  · {frequencyLabel(company.frequency)} · {company.enabled ? 'enabled' : 'disabled'}
+                  · {frequencyLabel(company.frequency)}
                 </div>
               </div>
               <div className="actions">
@@ -129,6 +138,9 @@ function App() {
                 </button>
                 <button onClick={() => toggleJobs(company.id)}>
                   {expandedId === company.id ? 'Hide jobs' : 'View jobs'}
+                </button>
+                <button onClick={() => toggleEnabled(company)}>
+                  {company.enabled ? 'Disable' : 'Enable'}
                 </button>
                 <button onClick={() => removeCompany(company.id)} className="danger">
                   Delete
