@@ -32,7 +32,6 @@ export interface ScrapeResult {
 }
 
 export interface NewCompany {
-  id: string
   name: string
   url: string
   frequency: string

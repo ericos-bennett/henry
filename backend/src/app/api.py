@@ -4,6 +4,7 @@ import logging
 
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
+from django.utils.text import slugify
 from ninja import NinjaAPI
 
 from app.extractor import ExtractionError
@@ -38,7 +39,7 @@ def get_company(request, company_id: str):
 
 @api.post("/companies", response={201: CompanyOut})
 def create_company(request, payload: CompanyIn):
-    company = Company.objects.create(**payload.dict())
+    company = Company.objects.create(id=slugify(payload.name), **payload.dict())
     return 201, company
 
 

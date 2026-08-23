@@ -15,7 +15,6 @@ function App() {
   const [scrapeMessage, setScrapeMessage] = useState<string | null>(null)
 
   const [newCompany, setNewCompany] = useState<NewCompany>({
-    id: '',
     name: '',
     url: '',
     frequency: '0 */6 * * *',
@@ -53,18 +52,19 @@ function App() {
   }
 
   const scrape = async (id: string) => {
+    const name = companies.find((c) => c.id === id)?.name ?? id
     setScrapingId(id)
     setScrapeMessage(null)
     try {
       const result = await api.scrapeCompany(id)
-      setScrapeMessage(`${id}: found ${result.jobs_found} job(s)`)
+      setScrapeMessage(`${name}: found ${result.jobs_found} job(s)`)
       // Refresh cached jobs for this company if currently expanded.
       if (expandedId === id) {
         const jobs = await api.listCompanyJobs(id)
         setJobsByCompany((prev) => ({ ...prev, [id]: jobs }))
       }
     } catch (e) {
-      setScrapeMessage(`${id}: scrape failed — ${String(e)}`)
+      setScrapeMessage(`${name}: scrape failed — ${String(e)}`)
     } finally {
       setScrapingId(null)
     }
@@ -85,7 +85,7 @@ function App() {
     try {
       const created = await api.createCompany(newCompany)
       setCompanies((prev) => [...prev, created])
-      setNewCompany({ id: '', name: '', url: '', frequency: '0 */6 * * *' })
+      setNewCompany({ name: '', url: '', frequency: '0 */6 * * *' })
     } catch (e) {
       setFormError(String(e))
     }
@@ -104,8 +104,7 @@ function App() {
           <li key={company.id} className="company">
             <div className="company-row">
               <div>
-                <strong>{company.name}</strong>{' '}
-                <span className="muted">({company.id})</span>
+                <strong>{company.name}</strong>
                 <div className="muted small">
                   <a href={company.url} target="_blank" rel="noreferrer">
                     {company.url}
@@ -153,12 +152,6 @@ function App() {
 
       <h2>Add a company</h2>
       <form onSubmit={addCompany} className="add-company-form">
-        <input
-          placeholder="id (slug)"
-          value={newCompany.id}
-          onChange={(e) => setNewCompany({ ...newCompany, id: e.target.value })}
-          required
-        />
         <input
           placeholder="name"
           value={newCompany.name}

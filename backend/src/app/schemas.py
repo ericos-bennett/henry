@@ -16,7 +16,6 @@ class CompanyOut(ModelSchema):
 
 
 class CompanyIn(Schema):
-    id: str
     name: str
     url: str
     frequency: str
