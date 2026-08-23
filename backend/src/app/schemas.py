@@ -2,11 +2,19 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from croniter import croniter
 from ninja import ModelSchema, Schema
 from pydantic import field_validator
 
 from app.models import Company, JobPosting
+
+# Kept in sync with FREQUENCY_OPTIONS in frontend/src/App.tsx, the only source of
+# frequency values in the UI.
+ALLOWED_FREQUENCIES = {
+    "0 * * * *",  # Hourly
+    "0 */8 * * *",  # Every 8 Hours
+    "0 8 * * *",  # Daily
+    "0 8 * * 0",  # Weekly
+}
 
 
 class CompanyOut(ModelSchema):
@@ -23,9 +31,9 @@ class CompanyIn(Schema):
 
     @field_validator("frequency")
     @classmethod
-    def validate_cron(cls, value: str) -> str:
-        if not croniter.is_valid(value):
-            raise ValueError(f"'{value}' is not a valid cron expression")
+    def validate_frequency(cls, value: str) -> str:
+        if value not in ALLOWED_FREQUENCIES:
+            raise ValueError(f"'{value}' is not one of the allowed frequencies: {sorted(ALLOWED_FREQUENCIES)}")
         return value
 
 

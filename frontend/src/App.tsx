@@ -2,6 +2,17 @@ import { useEffect, useState } from 'react'
 import './App.css'
 import { api, type Company, type JobPosting, type NewCompany } from './api'
 
+const FREQUENCY_OPTIONS = [
+  { label: 'Hourly', value: '0 * * * *' },
+  { label: 'Every 8 Hours', value: '0 */8 * * *' },
+  { label: 'Daily', value: '0 8 * * *' },
+  { label: 'Weekly', value: '0 8 * * 0' },
+]
+
+function frequencyLabel(cron: string): string {
+  return FREQUENCY_OPTIONS.find((option) => option.value === cron)?.label ?? cron
+}
+
 function App() {
   const [companies, setCompanies] = useState<Company[]>([])
   const [loading, setLoading] = useState(true)
@@ -17,7 +28,7 @@ function App() {
   const [newCompany, setNewCompany] = useState<NewCompany>({
     name: '',
     url: '',
-    frequency: '0 */6 * * *',
+    frequency: FREQUENCY_OPTIONS[0].value,
   })
   const [formError, setFormError] = useState<string | null>(null)
 
@@ -85,7 +96,7 @@ function App() {
     try {
       const created = await api.createCompany(newCompany)
       setCompanies((prev) => [...prev, created])
-      setNewCompany({ name: '', url: '', frequency: '0 */6 * * *' })
+      setNewCompany({ name: '', url: '', frequency: FREQUENCY_OPTIONS[0].value })
     } catch (e) {
       setFormError(String(e))
     }
@@ -109,7 +120,7 @@ function App() {
                   <a href={company.url} target="_blank" rel="noreferrer">
                     {company.url}
                   </a>{' '}
-                  · {company.frequency} · {company.enabled ? 'enabled' : 'disabled'}
+                  · {frequencyLabel(company.frequency)} · {company.enabled ? 'enabled' : 'disabled'}
                 </div>
               </div>
               <div className="actions">
@@ -164,12 +175,16 @@ function App() {
           onChange={(e) => setNewCompany({ ...newCompany, url: e.target.value })}
           required
         />
-        <input
-          placeholder="cron frequency"
+        <select
           value={newCompany.frequency}
           onChange={(e) => setNewCompany({ ...newCompany, frequency: e.target.value })}
-          required
-        />
+        >
+          {FREQUENCY_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
         <button type="submit">Add</button>
       </form>
       {formError && <p className="error">{formError}</p>}

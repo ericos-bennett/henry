@@ -17,19 +17,22 @@ logger = logging.getLogger(__name__)
 
 def tick(now: datetime | None = None) -> None:
     """Check all enabled companies against `now` (default: current UTC time,
-    truncated to the top of the hour) and scrape any whose cron expression
-    matches.
+    truncated to the top of the hour, converted to server-local time for cron
+    matching) and scrape any whose cron expression matches.
 
     Callable directly (e.g. from `manage.py shell`) for manual verification
     without waiting for the real hourly loop.
     """
     now = (now or datetime.now(timezone.utc)).replace(minute=0, second=0, microsecond=0)
     logger.info("scheduler tick at %s", now.isoformat())
+    # Cron expressions (e.g. from the frontend's frequency dropdown) are authored in
+    # server-local time, so match against that rather than the UTC `now` above.
+    local_now = now.astimezone()
 
     close_old_connections()
     for company in Company.objects.filter(enabled=True):
         try:
-            due = croniter.match(company.frequency, now)
+            due = croniter.match(company.frequency, local_now)
         except Exception:
             logger.exception("scheduler: invalid cron for %s: %r", company.id, company.frequency)
             continue
