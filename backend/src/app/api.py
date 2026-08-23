@@ -1,13 +1,29 @@
 from __future__ import annotations
 
+import logging
+
+from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
 from ninja import NinjaAPI
 
+from app.extractor import ExtractionError
 from app.models import Company, JobPosting
 from app.pipeline import run_scrape
 from app.schemas import CompanyIn, CompanyOut, JobPostingOut, ScrapeResult
 
+logger = logging.getLogger(__name__)
+
 api = NinjaAPI()
+
+
+@api.exception_handler(ExtractionError)
+def handle_extraction_error(request: HttpRequest, exc: ExtractionError):
+    logger.exception("Extraction failed during request")
+    return api.create_response(
+        request,
+        {"detail": "The job extraction service is temporarily unavailable. Please try again later."},
+        status=502,
+    )
 
 
 @api.get("/companies", response=list[CompanyOut])

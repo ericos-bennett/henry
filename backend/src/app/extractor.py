@@ -18,6 +18,11 @@ EXTRACTION_PROMPT = (
 )
 
 
+class ExtractionError(Exception):
+    """Raised when an LLMExtractor fails to extract job postings, for any reason
+    (upstream API failure, malformed response, etc.)."""
+
+
 class LLMExtractor(ABC):
     @abstractmethod
     def extract(self, content: str) -> list[ExtractedJob]:

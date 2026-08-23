@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 
 from app.config import AppConfig, load_config
-from app.extractor import LLMExtractor, get_extractor, to_job_postings
+from app.extractor import ExtractionError, LLMExtractor, get_extractor, to_job_postings
 from app.fetcher import fetch_company
 from app.models import Company
 from app.schemas import ScrapeResult
@@ -24,7 +24,10 @@ def run_scrape(company: Company) -> ScrapeResult:
     result = fetch_company(company, config.settings.playwright)
     write_raw_html(config.settings.storage.root, company.id, result.fetched_at, result.html)
 
-    extracted = extractor.extract(result.text)
+    try:
+        extracted = extractor.extract(result.text)
+    except Exception as e:
+        raise ExtractionError(str(e)) from e
     jobs = to_job_postings(extracted, company=company, scraped_at=result.fetched_at)
     saved = save_job_postings(jobs)
 
