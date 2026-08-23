@@ -7,6 +7,7 @@ set -a
 set +a
 
 uv sync
+uv run opentelemetry-bootstrap -a install
 uv run playwright install chromium
 uv run python manage.py migrate
-uv run python manage.py runserver "${DJANGO_RUNSERVER_ADDR:-8000}"
+uv run opentelemetry-instrument python manage.py runserver "${DJANGO_RUNSERVER_ADDR:-8000}"

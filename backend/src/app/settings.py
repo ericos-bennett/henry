@@ -41,6 +41,20 @@ TEMPLATES = [
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 USE_TZ = True
 
+# Routes Django's logs through the stdlib `logging` module so the OpenTelemetry
+# logging auto-instrumentation (enabled via OTEL_LOGS_EXPORTER=otlp) can capture them.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {"class": "logging.StreamHandler"},
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+}
+
 
 def _database_from_url(url: str) -> dict:
     parsed = urlsplit(url)
