@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
+    allowedHosts: ['henry.fourthwallride.com'],
     proxy: {
       // changeOrigin: false (the default for this object form, spelled out here since
       // the shorthand string form implies changeOrigin: true) preserves the browser's
