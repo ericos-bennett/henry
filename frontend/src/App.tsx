@@ -226,6 +226,7 @@ function App() {
                   {jobsByCompany[company.id]?.map((job) => (
                     <li key={job.id}>
                       <strong>{job.title}</strong>
+                      {job.is_new && <span className="badge-new">New</span>}
                       {job.location && ` — ${job.location}`}
                       {job.salary_min != null && job.salary_max != null && (
                         <span className="muted">

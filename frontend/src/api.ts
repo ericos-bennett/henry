@@ -12,6 +12,7 @@ export interface JobPosting {
   source_company: string
   source_url: string
   scraped_at: string
+  is_new: boolean
   title: string
   url: string | null
   location: string | null

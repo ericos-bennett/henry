@@ -79,6 +79,17 @@ h1 {
   margin-bottom: 0.25rem;
 }
 
+.badge-new {
+  display: inline-block;
+  color: #1a7f37;
+  background: #e6f4ea;
+  border-radius: 4px;
+  padding: 0.05rem 0.4rem;
+  margin-left: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
 .add-company-form {
   display: flex;
   flex-wrap: wrap;

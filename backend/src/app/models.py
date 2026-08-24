@@ -27,6 +27,7 @@ class JobPosting(models.Model):
     )
     source_url = models.URLField(max_length=500)
     scraped_at = models.DateTimeField()
+    is_new = models.BooleanField(default=False)
 
     title = models.CharField(max_length=500)
     url = models.URLField(max_length=500, null=True, blank=True)
