@@ -411,12 +411,15 @@ function App() {
       </form>
       {formError && <p className="error">{formError}</p>}
 
-      <div className="scrape-all">
-        <button onClick={scrapeAll} disabled={scrapingAll}>
-          {scrapingAll ? 'Scraping All…' : 'Scrape All & Email Recommended Jobs'}
-        </button>
-        {scrapeAllMessage && <p className="scrape-message">{scrapeAllMessage}</p>}
-      </div>
+      {user.is_staff && (
+        <div className="scrape-all">
+          <h2>Admin</h2>
+          <button onClick={scrapeAll} disabled={scrapingAll}>
+            {scrapingAll ? 'Scraping All…' : 'Scrape All & Email Recommended Jobs'}
+          </button>
+          {scrapeAllMessage && <p className="scrape-message">{scrapeAllMessage}</p>}
+        </div>
+      )}
     </div>
   )
 }

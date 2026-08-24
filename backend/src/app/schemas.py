@@ -93,3 +93,4 @@ class LoginIn(Schema):
 
 class UserOut(Schema):
     username: str
+    is_staff: bool
