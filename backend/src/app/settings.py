@@ -19,6 +19,16 @@ ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]"] + [
     h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",") if h.strip()
 ]
 
+# Extra origins (full scheme://host:port) allowed to make unsafe (POST/PATCH/DELETE)
+# requests, beyond what Django's default same-origin check already allows. Not needed
+# for the normal LAN setup (the Vite proxy preserves the original Host header, so it
+# already matches the browser's Origin) - this is an escape hatch for other cases, e.g.
+# hitting the backend directly on its own port. Set DJANGO_CSRF_TRUSTED_ORIGINS
+# (comma-separated) in .env if needed.
+CSRF_TRUSTED_ORIGINS = [
+    o.strip() for o in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if o.strip()
+]
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
