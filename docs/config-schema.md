@@ -8,22 +8,24 @@ Global options for the app:
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `llm.provider` | string | yes | Which LLM provider implementation to use by default (e.g. `"claude"`, `"gemini"`). |
-| `llm.model` | string | yes | Model name/id to use for extraction (e.g. `"claude-sonnet-5"`). |
-| `llm.api_key_env` | string | yes | Name of the environment variable holding the provider's API key (the key itself is never stored in this file). |
+| `llm.api_key_env` | string | no (default `"LLM_API_KEY"`) | Name of the environment variable holding the provider's API key (the key itself is never stored in this file). |
 | `playwright.headless` | boolean | no (default `true`) | Whether to run the browser headless. |
 | `playwright.timeout_ms` | number | no (default e.g. `30000`) | Navigation/wait timeout per page. |
 | `storage.root` | string | no (default `"data/"`) | Root directory for raw HTML debug dumps (job postings themselves go to Postgres, not this directory). |
 | `logging.level` | string | no (default `"info"`) | Log verbosity. |
 
+The LLM provider and model are **not** set in this file — they're read from environment variables in `backend/.env`, so switching providers doesn't require touching a committed file:
+
+| Env var | Description |
+|---|---|
+| `LLM_PROVIDER` | Which LLM provider implementation to use (`"gemini"` or `"claude"`). |
+| `LLM_MODEL` | Model name/id to use for extraction (e.g. `"claude-haiku-4-5"`). |
+| `LLM_API_KEY` | API key for whichever provider `LLM_PROVIDER` names (env var name configurable via `llm.api_key_env` above). |
+
 ## Example
 
 ```yaml
 settings:
-  llm:
-    provider: claude
-    model: claude-sonnet-5
-    api_key_env: LLM_API_KEY
   playwright:
     headless: true
     timeout_ms: 30000

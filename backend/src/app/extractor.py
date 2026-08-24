@@ -5,6 +5,8 @@ import json
 from abc import ABC, abstractmethod
 from datetime import datetime
 
+from pydantic import BaseModel
+
 from app.config import LLMSettings
 from app.models import Company, JobPosting
 from app.schema import ExtractedJob
@@ -51,6 +53,27 @@ class GeminiExtractor(LLMExtractor):
         return [ExtractedJob.model_validate(item) for item in json.loads(response.text)]
 
 
+class _ExtractedJobList(BaseModel):
+    jobs: list[ExtractedJob]
+
+
+class AnthropicExtractor(LLMExtractor):
+    def __init__(self, api_key: str, model: str):
+        import anthropic
+
+        self._client = anthropic.Anthropic(api_key=api_key)
+        self._model = model
+
+    def extract(self, content: str) -> list[ExtractedJob]:
+        response = self._client.messages.parse(
+            model=self._model,
+            max_tokens=16000,
+            messages=[{"role": "user", "content": f"{EXTRACTION_PROMPT}\n\n---\n\n{content}"}],
+            output_format=_ExtractedJobList,
+        )
+        return response.parsed_output.jobs
+
+
 def get_extractor(settings: LLMSettings) -> LLMExtractor:
     api_key = settings.api_key
     if not api_key:
@@ -61,6 +84,8 @@ def get_extractor(settings: LLMSettings) -> LLMExtractor:
 
     if settings.provider == "gemini":
         return GeminiExtractor(api_key=api_key, model=settings.model)
+    if settings.provider == "claude":
+        return AnthropicExtractor(api_key=api_key, model=settings.model)
 
     raise NotImplementedError(f"No extractor implemented for provider '{settings.provider}'")
 

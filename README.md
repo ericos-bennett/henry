@@ -38,7 +38,7 @@ Job seekers, recruiters, and researchers often want to track job postings across
 - Python 3.11+ and [uv](https://docs.astral.sh/uv/)
 - Node.js and npm
 - A local Postgres instance running
-- An API key for whichever LLM provider `backend/config/settings.yaml` points to (Gemini's free tier works fine for testing)
+- An API key for whichever LLM provider `LLM_PROVIDER` is set to in `.env` (Gemini's free tier works fine for testing)
 
 ### Backend
 
@@ -52,7 +52,9 @@ cp .env.example .env
 ```
 
 Fill in `.env`:
-- `LLM_API_KEY` — key for the provider set in `config/settings.yaml`'s `settings.llm.provider`
+- `LLM_PROVIDER` — `gemini` or `claude`
+- `LLM_MODEL` — model name/id for that provider (e.g. `claude-haiku-4-5`)
+- `LLM_API_KEY` — API key for that provider
 - `DATABASE_URL` — connection string for your local Postgres instance
 
 #### 2. Create the database

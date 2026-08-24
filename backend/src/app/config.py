@@ -10,9 +10,21 @@ DEFAULT_CONFIG_PATH = "config/settings.yaml"
 
 
 class LLMSettings(BaseModel):
-    provider: str
-    model: str
-    api_key_env: str
+    api_key_env: str = "LLM_API_KEY"
+
+    @property
+    def provider(self) -> str:
+        value = os.environ.get("LLM_PROVIDER")
+        if not value:
+            raise RuntimeError("Set LLM_PROVIDER in your .env file (e.g. 'gemini' or 'claude').")
+        return value
+
+    @property
+    def model(self) -> str:
+        value = os.environ.get("LLM_MODEL")
+        if not value:
+            raise RuntimeError("Set LLM_MODEL in your .env file (e.g. 'claude-haiku-4-5').")
+        return value
 
     @property
     def api_key(self) -> str | None:
@@ -33,7 +45,7 @@ class LoggingSettings(BaseModel):
 
 
 class Settings(BaseModel):
-    llm: LLMSettings
+    llm: LLMSettings = Field(default_factory=LLMSettings)
     playwright: PlaywrightSettings = Field(default_factory=PlaywrightSettings)
     storage: StorageSettings = Field(default_factory=StorageSettings)
     logging: LoggingSettings = Field(default_factory=LoggingSettings)
