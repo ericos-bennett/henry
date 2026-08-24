@@ -26,6 +26,16 @@ def fetch_company(company: Company, settings: PlaywrightSettings) -> FetchResult
             page = browser.new_page()
             page.goto(company.url, wait_until="networkidle", timeout=settings.timeout_ms)
             html = page.content()
+            # Append each link's absolute URL as trailing text inside the anchor
+            # (not replacing its content) so inner_text still exposes hrefs for the
+            # extractor without flattening a job card's internal line breaks.
+            page.evaluate(
+                """() => {
+                    document.querySelectorAll('a[href]').forEach((a) => {
+                        a.appendChild(document.createTextNode(` (${a.href})`));
+                    });
+                }"""
+            )
             text = page.inner_text("body")
             title = page.title()
         finally:

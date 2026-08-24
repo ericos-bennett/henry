@@ -211,7 +211,13 @@ function App() {
 
   const renderJobItem = (job: JobPosting) => (
     <li key={job.id}>
-      <strong>{job.title}</strong>
+      {job.url ? (
+        <a href={job.url} target="_blank" rel="noreferrer">
+          <strong>{job.title}</strong>
+        </a>
+      ) : (
+        <strong>{job.title}</strong>
+      )}
       {job.is_new && <span className="badge-new">New</span>}
       {job.location && ` — ${job.location}`}
       {job.salary_min != null && job.salary_max != null && (

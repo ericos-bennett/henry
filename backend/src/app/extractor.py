@@ -17,6 +17,9 @@ logger = logging.getLogger(__name__)
 EXTRACTION_PROMPT = (
     "You are given the visible text of a company's career page. "
     "Extract every distinct job posting listed on the page. "
+    "Links appear inline as their visible text followed by their absolute URL in "
+    "parentheses, e.g. 'Senior Engineer (https://example.com/jobs/123)' — use the "
+    "nearest such URL as a job's url field when one is present. "
     "If a field isn't present for a job, omit it or leave it null rather than guessing. "
     "Do not invent jobs that aren't actually listed. "
     "If no jobs are listed, return an empty list."
