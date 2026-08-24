@@ -47,6 +47,9 @@ function App() {
   const [preferencesError, setPreferencesError] = useState<string | null>(null)
   const [preferencesSaving, setPreferencesSaving] = useState(false)
 
+  const [scrapingAll, setScrapingAll] = useState(false)
+  const [scrapeAllMessage, setScrapeAllMessage] = useState<string | null>(null)
+
   const loadCompanies = () => {
     setLoading(true)
     api
@@ -165,6 +168,21 @@ function App() {
     }
   }
 
+  // Re-fetch every already-loaded company's jobs, e.g. so is_recommended reflects
+  // newly saved preferences or freshly scraped postings, not just what's expanded.
+  const refreshCachedJobs = async () => {
+    const cachedCompanyIds = Object.keys(jobsByCompany)
+    if (cachedCompanyIds.length === 0) return
+    const refreshed = await Promise.all(cachedCompanyIds.map((id) => api.listCompanyJobs(id)))
+    setJobsByCompany((prev) => {
+      const next = { ...prev }
+      cachedCompanyIds.forEach((id, i) => {
+        next[id] = refreshed[i]
+      })
+      return next
+    })
+  }
+
   const savePreferences = async (e: React.FormEvent) => {
     e.preventDefault()
     setPreferencesError(null)
@@ -175,23 +193,29 @@ function App() {
         keywords: splitCommaList(keywordsInput),
       })
       setPreferences(updated)
-      // Re-fetch every already-loaded company's jobs so is_recommended reflects the
-      // newly saved preferences, not just the currently expanded one.
-      const cachedCompanyIds = Object.keys(jobsByCompany)
-      if (cachedCompanyIds.length > 0) {
-        const refreshed = await Promise.all(cachedCompanyIds.map((id) => api.listCompanyJobs(id)))
-        setJobsByCompany((prev) => {
-          const next = { ...prev }
-          cachedCompanyIds.forEach((id, i) => {
-            next[id] = refreshed[i]
-          })
-          return next
-        })
-      }
+      await refreshCachedJobs()
     } catch (e) {
       setPreferencesError(String(e))
     } finally {
       setPreferencesSaving(false)
+    }
+  }
+
+  const scrapeAll = async () => {
+    setScrapingAll(true)
+    setScrapeAllMessage(null)
+    try {
+      const result = await api.scrapeAll()
+      setScrapeAllMessage(
+        `Scraped ${result.companies_scraped} compan${result.companies_scraped === 1 ? 'y' : 'ies'}` +
+          (result.companies_failed > 0 ? ` (${result.companies_failed} failed)` : '') +
+          ` — ${result.jobs_found} job(s) found. Sent a recommended-jobs email if there were any matches.`,
+      )
+      await refreshCachedJobs()
+    } catch (e) {
+      setScrapeAllMessage(`Scrape all failed — ${String(e)}`)
+    } finally {
+      setScrapingAll(false)
     }
   }
 
@@ -386,6 +410,13 @@ function App() {
         <button type="submit">Add</button>
       </form>
       {formError && <p className="error">{formError}</p>}
+
+      <div className="scrape-all">
+        <button onClick={scrapeAll} disabled={scrapingAll}>
+          {scrapingAll ? 'Scraping All…' : 'Scrape All & Email Recommended Jobs'}
+        </button>
+        {scrapeAllMessage && <p className="scrape-message">{scrapeAllMessage}</p>}
+      </div>
     </div>
   )
 }

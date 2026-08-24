@@ -118,3 +118,13 @@ h1 {
   flex: 1 1 150px;
   padding: 0.4rem 0.6rem;
 }
+
+.scrape-all {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #eee;
+}
+
+.scrape-all .scrape-message {
+  margin-top: 0.75rem;
+}

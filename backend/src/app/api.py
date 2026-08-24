@@ -13,6 +13,7 @@ from ninja.security import django_auth
 from app.extractor import ExtractionError
 from app.matching import is_recommended
 from app.models import Company, JobPosting, UserPreferences
+from app.notifications import notify_all_recommended_jobs
 from app.pipeline import run_scrape
 from app.schemas import (
     CompanyIn,
@@ -22,6 +23,7 @@ from app.schemas import (
     LoginIn,
     PreferencesIn,
     PreferencesOut,
+    ScrapeAllResult,
     ScrapeResult,
     UserOut,
 )
@@ -64,6 +66,34 @@ def me(request):
 @api.get("/companies", response=list[CompanyOut])
 def list_companies(request):
     return Company.objects.filter(owner=request.user)
+
+
+@api.post("/companies/scrape-all", response=ScrapeAllResult)
+def scrape_all_companies(request):
+    """Scrape every one of the user's companies and send a single combined digest
+    of all currently recommended jobs, regardless of whether any are new —
+    distinct from the per-company is_new-gated email each individual scrape sends.
+    Registered before /companies/{company_id} so 'scrape-all' isn't swallowed by
+    that parameterized route."""
+    companies = list(Company.objects.filter(owner=request.user))
+    jobs_found = 0
+    failed = 0
+    for company in companies:
+        try:
+            result = run_scrape(company, notify=False)
+            jobs_found += result.jobs_found
+        except Exception:
+            failed += 1
+            logger.exception("scrape failed for %s during scrape-all", company.id)
+
+    try:
+        notify_all_recommended_jobs(request.user)
+    except Exception:
+        logger.exception("failed to send combined notification email for %s", request.user.username)
+
+    return ScrapeAllResult(
+        companies_scraped=len(companies) - failed, companies_failed=failed, jobs_found=jobs_found
+    )
 
 
 @api.get("/companies/{company_id}", response=CompanyOut)

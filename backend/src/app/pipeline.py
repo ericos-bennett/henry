@@ -16,11 +16,13 @@ config: AppConfig = load_config()
 extractor: LLMExtractor = get_extractor(config.settings.llm)
 
 
-def run_scrape(company: Company) -> ScrapeResult:
+def run_scrape(company: Company, *, notify: bool = True) -> ScrapeResult:
     """Fetch, extract, and persist job postings for one company.
 
     Shared by POST /companies/{id}/scrape and the scheduler tick so the
-    orchestration logic isn't duplicated.
+    orchestration logic isn't duplicated. `notify=False` skips the per-company
+    is_new-gated notification email — used by the "scrape all" flow, which sends
+    one combined digest across all companies instead.
     """
     result = fetch_company(company, config.settings.playwright)
     write_raw_html(config.settings.storage.root, company.id, result.fetched_at, result.html)
@@ -32,10 +34,11 @@ def run_scrape(company: Company) -> ScrapeResult:
     jobs = to_job_postings(extracted, company=company, scraped_at=result.fetched_at)
     saved = save_job_postings(jobs)
 
-    try:
-        notify_new_recommended_jobs(company, saved)
-    except Exception:
-        logger.exception("failed to send notification email for %s", company.id)
+    if notify:
+        try:
+            notify_new_recommended_jobs(company, saved)
+        except Exception:
+            logger.exception("failed to send notification email for %s", company.id)
 
     logger.info("scraped %s: %d jobs found", company.id, len(saved))
     return ScrapeResult(company_id=company.id, jobs_found=len(saved), scraped_at=result.fetched_at)

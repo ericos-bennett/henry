@@ -33,6 +33,12 @@ export interface ScrapeResult {
   scraped_at: string
 }
 
+export interface ScrapeAllResult {
+  companies_scraped: number
+  companies_failed: number
+  jobs_found: number
+}
+
 export interface NewCompany {
   name: string
   url: string
@@ -117,6 +123,8 @@ export const api = {
 
   scrapeCompany: (id: string) =>
     request<ScrapeResult>(`/api/companies/${id}/scrape`, { method: 'POST' }),
+
+  scrapeAll: () => request<ScrapeAllResult>('/api/companies/scrape-all', { method: 'POST' }),
 
   getPreferences: () => request<Preferences>('/api/preferences'),
 

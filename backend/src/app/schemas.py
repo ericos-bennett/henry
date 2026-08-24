@@ -80,6 +80,12 @@ class ScrapeResult(Schema):
     scraped_at: datetime
 
 
+class ScrapeAllResult(Schema):
+    companies_scraped: int
+    companies_failed: int
+    jobs_found: int
+
+
 class LoginIn(Schema):
     username: str
     password: str
