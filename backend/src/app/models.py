@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from django.conf import settings
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
 
 
@@ -52,3 +53,14 @@ class JobPosting(models.Model):
 
     def __str__(self) -> str:
         return f"{self.title} ({self.source_company_id})"
+
+
+class UserPreferences(models.Model):
+    owner = models.OneToOneField(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="job_preferences"
+    )
+    locations = ArrayField(models.CharField(max_length=200), default=list, blank=True)
+    keywords = ArrayField(models.CharField(max_length=200), default=list, blank=True)
+
+    def __str__(self) -> str:
+        return f"preferences for {self.owner_id}"

@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react'
 import './App.css'
-import { ApiError, api, type Company, type JobPosting, type NewCompany, type User } from './api'
+import { ApiError, api, type Company, type JobPosting, type NewCompany, type Preferences, type User } from './api'
+
+function splitCommaList(value: string): string[] {
+  return value
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0)
+}
 
 const FREQUENCY_OPTIONS = [
   { label: 'Hourly', value: '0 * * * *' },
@@ -34,6 +41,12 @@ function App() {
   })
   const [formError, setFormError] = useState<string | null>(null)
 
+  const [preferences, setPreferences] = useState<Preferences>({ locations: [], keywords: [] })
+  const [locationsInput, setLocationsInput] = useState('')
+  const [keywordsInput, setKeywordsInput] = useState('')
+  const [preferencesError, setPreferencesError] = useState<string | null>(null)
+  const [preferencesSaving, setPreferencesSaving] = useState(false)
+
   const loadCompanies = () => {
     setLoading(true)
     api
@@ -41,6 +54,17 @@ function App() {
       .then(setCompanies)
       .catch((e) => setError(String(e)))
       .finally(() => setLoading(false))
+  }
+
+  const loadPreferences = () => {
+    api
+      .getPreferences()
+      .then((prefs) => {
+        setPreferences(prefs)
+        setLocationsInput(prefs.locations.join(', '))
+        setKeywordsInput(prefs.keywords.join(', '))
+      })
+      .catch((e) => setError(String(e)))
   }
 
   useEffect(() => {
@@ -52,7 +76,10 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (user) loadCompanies()
+    if (user) {
+      loadCompanies()
+      loadPreferences()
+    }
   }, [user])
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -138,6 +165,28 @@ function App() {
     }
   }
 
+  const savePreferences = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setPreferencesError(null)
+    setPreferencesSaving(true)
+    try {
+      const updated = await api.updatePreferences({
+        locations: splitCommaList(locationsInput),
+        keywords: splitCommaList(keywordsInput),
+      })
+      setPreferences(updated)
+      // Re-fetch expanded jobs so is_recommended reflects the newly saved preferences.
+      if (expandedId && jobsByCompany[expandedId]) {
+        const jobs = await api.listCompanyJobs(expandedId)
+        setJobsByCompany((prev) => ({ ...prev, [expandedId]: jobs }))
+      }
+    } catch (e) {
+      setPreferencesError(String(e))
+    } finally {
+      setPreferencesSaving(false)
+    }
+  }
+
   const addCompany = async (e: React.FormEvent) => {
     e.preventDefault()
     setFormError(null)
@@ -149,6 +198,23 @@ function App() {
       setFormError(String(e))
     }
   }
+
+  const hasPreferences = preferences.locations.length > 0 || preferences.keywords.length > 0
+
+  const renderJobItem = (job: JobPosting) => (
+    <li key={job.id}>
+      <strong>{job.title}</strong>
+      {job.is_new && <span className="badge-new">New</span>}
+      {job.location && ` — ${job.location}`}
+      {job.salary_min != null && job.salary_max != null && (
+        <span className="muted">
+          {' '}
+          (${job.salary_min.toLocaleString()}–${job.salary_max.toLocaleString()}
+          {job.salary_currency ? ` ${job.salary_currency}` : ''})
+        </span>
+      )}
+    </li>
+  )
 
   if (!authChecked) {
     return <div className="page" />
@@ -238,27 +304,46 @@ function App() {
               <div className="jobs">
                 {jobsLoadingId === company.id && <p>Loading jobs…</p>}
                 {jobsByCompany[company.id]?.length === 0 && <p className="muted">No jobs scraped yet.</p>}
-                <ul>
-                  {jobsByCompany[company.id]?.map((job) => (
-                    <li key={job.id}>
-                      <strong>{job.title}</strong>
-                      {job.is_new && <span className="badge-new">New</span>}
-                      {job.location && ` — ${job.location}`}
-                      {job.salary_min != null && job.salary_max != null && (
-                        <span className="muted">
-                          {' '}
-                          (${job.salary_min.toLocaleString()}–${job.salary_max.toLocaleString()}
-                          {job.salary_currency ? ` ${job.salary_currency}` : ''})
-                        </span>
-                      )}
-                    </li>
+                {jobsByCompany[company.id] != null &&
+                  jobsByCompany[company.id]!.length > 0 &&
+                  (hasPreferences ? (
+                    <>
+                      <h4>Good Fits</h4>
+                      <ul>
+                        {jobsByCompany[company.id]!.filter((job) => job.is_recommended).map(renderJobItem)}
+                        {jobsByCompany[company.id]!.every((job) => !job.is_recommended) && (
+                          <li className="muted">No matches yet.</li>
+                        )}
+                      </ul>
+                      <h4>Other Openings</h4>
+                      <ul>{jobsByCompany[company.id]!.filter((job) => !job.is_recommended).map(renderJobItem)}</ul>
+                    </>
+                  ) : (
+                    <ul>{jobsByCompany[company.id]!.map(renderJobItem)}</ul>
                   ))}
-                </ul>
               </div>
             )}
           </li>
         ))}
       </ul>
+
+      <h2>Preferences</h2>
+      <form onSubmit={savePreferences} className="add-company-form">
+        <input
+          placeholder="Preferred Locations (comma-separated)"
+          value={locationsInput}
+          onChange={(e) => setLocationsInput(e.target.value)}
+        />
+        <input
+          placeholder="Keywords (comma-separated)"
+          value={keywordsInput}
+          onChange={(e) => setKeywordsInput(e.target.value)}
+        />
+        <button type="submit" disabled={preferencesSaving}>
+          {preferencesSaving ? 'Saving…' : 'Save'}
+        </button>
+      </form>
+      {preferencesError && <p className="error">{preferencesError}</p>}
 
       <h2>Add a company</h2>
       <form onSubmit={addCompany} className="add-company-form">

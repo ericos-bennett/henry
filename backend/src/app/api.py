@@ -11,7 +11,8 @@ from ninja.errors import HttpError
 from ninja.security import django_auth
 
 from app.extractor import ExtractionError
-from app.models import Company, JobPosting
+from app.matching import is_recommended
+from app.models import Company, JobPosting, UserPreferences
 from app.pipeline import run_scrape
 from app.schemas import (
     CompanyIn,
@@ -19,6 +20,8 @@ from app.schemas import (
     CompanyPatch,
     JobPostingOut,
     LoginIn,
+    PreferencesIn,
+    PreferencesOut,
     ScrapeResult,
     UserOut,
 )
@@ -98,6 +101,13 @@ def delete_company(request, company_id: str):
     return {"success": True}
 
 
+def _annotate_recommended(request, jobs: list[JobPosting]) -> list[JobPosting]:
+    prefs = UserPreferences.objects.filter(owner=request.user).first() or UserPreferences()
+    for job in jobs:
+        job._is_recommended = is_recommended(job, prefs)
+    return jobs
+
+
 @api.get("/companies/{company_id}/jobs", response=list[JobPostingOut])
 def list_company_jobs(request, company_id: str, latest_only: bool = False):
     company = get_object_or_404(Company, pk=company_id, owner=request.user)
@@ -106,7 +116,7 @@ def list_company_jobs(request, company_id: str, latest_only: bool = False):
         latest = qs.first()
         if latest is not None:
             qs = qs.filter(scraped_at=latest.scraped_at)
-    return qs
+    return _annotate_recommended(request, list(qs))
 
 
 @api.get("/jobs", response=list[JobPostingOut])
@@ -123,7 +133,19 @@ def list_jobs(
         qs = qs.filter(location__icontains=location)
     if salary_min is not None:
         qs = qs.filter(salary_min__gte=salary_min)
-    return qs
+    return _annotate_recommended(request, list(qs))
+
+
+@api.get("/preferences", response=PreferencesOut)
+def get_preferences(request):
+    prefs, _ = UserPreferences.objects.get_or_create(owner=request.user)
+    return prefs
+
+
+@api.put("/preferences", response=PreferencesOut)
+def update_preferences(request, payload: PreferencesIn):
+    prefs, _ = UserPreferences.objects.update_or_create(owner=request.user, defaults=payload.dict())
+    return prefs
 
 
 @api.post("/companies/{company_id}/scrape", response=ScrapeResult)

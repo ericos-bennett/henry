@@ -5,7 +5,7 @@ from datetime import datetime
 from ninja import ModelSchema, Schema
 from pydantic import field_validator
 
-from app.models import Company, JobPosting
+from app.models import Company, JobPosting, UserPreferences
 
 # Kept in sync with FREQUENCY_OPTIONS in frontend/src/App.tsx, the only source of
 # frequency values in the UI.
@@ -52,9 +52,26 @@ class CompanyPatch(Schema):
 
 
 class JobPostingOut(ModelSchema):
+    is_recommended: bool = False
+
     class Meta:
         model = JobPosting
         fields = "__all__"
+
+    @staticmethod
+    def resolve_is_recommended(obj) -> bool:
+        return getattr(obj, "_is_recommended", False)
+
+
+class PreferencesOut(ModelSchema):
+    class Meta:
+        model = UserPreferences
+        fields = ["locations", "keywords"]
+
+
+class PreferencesIn(Schema):
+    locations: list[str] = []
+    keywords: list[str] = []
 
 
 class ScrapeResult(Schema):

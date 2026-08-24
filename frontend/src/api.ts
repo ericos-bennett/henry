@@ -13,6 +13,7 @@ export interface JobPosting {
   source_url: string
   scraped_at: string
   is_new: boolean
+  is_recommended: boolean
   title: string
   url: string | null
   location: string | null
@@ -40,6 +41,11 @@ export interface NewCompany {
 
 export interface User {
   username: string
+}
+
+export interface Preferences {
+  locations: string[]
+  keywords: string[]
 }
 
 export class ApiError extends Error {
@@ -111,4 +117,12 @@ export const api = {
 
   scrapeCompany: (id: string) =>
     request<ScrapeResult>(`/api/companies/${id}/scrape`, { method: 'POST' }),
+
+  getPreferences: () => request<Preferences>('/api/preferences'),
+
+  updatePreferences: (preferences: Preferences) =>
+    request<Preferences>('/api/preferences', {
+      method: 'PUT',
+      body: JSON.stringify(preferences),
+    }),
 }
