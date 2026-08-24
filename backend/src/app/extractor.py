@@ -94,7 +94,11 @@ def get_extractor(settings: LLMSettings) -> LLMExtractor:
 
 
 def _make_job_id(company_id: str, extracted: ExtractedJob) -> str:
-    basis = f"{company_id}:{extracted.url or extracted.title}"
+    # Without a url, fall back to title + location rather than title alone — the
+    # same role posted in multiple locations (e.g. "Client Delivery Lead" in both
+    # Tokyo and Melbourne) is two distinct postings, not one.
+    fallback = f"{extracted.title}:{extracted.location or ''}"
+    basis = f"{company_id}:{extracted.url or fallback}"
     return hashlib.sha1(basis.encode()).hexdigest()[:12]
 
 

@@ -56,3 +56,19 @@ class ToJobPostingsTest(unittest.TestCase):
 
         self.assertEqual([p.title for p in postings], ["Software Engineer", "Designer"])
         self.assertEqual(len({p.job_id for p in postings}), len(postings))
+
+    def test_keeps_same_title_jobs_in_different_locations(self):
+        # e.g. Kraken listing "Client Delivery Lead" separately for Tokyo and
+        # Melbourne, with no url to distinguish them — these are two real postings,
+        # not a duplicate, so both must survive with distinct job_ids.
+        company = Company(id="kraken", name="Kraken", url="https://jobs.ashbyhq.com/krakentech", frequency="0 * * * *")
+        scraped_at = datetime(2026, 8, 24, tzinfo=timezone.utc)
+        jobs = [
+            ExtractedJob(title="Client Delivery Lead", location="Tokyo, Japan"),
+            ExtractedJob(title="Client Delivery Lead", location="Melbourne, Australia"),
+        ]
+
+        postings = to_job_postings(jobs, company=company, scraped_at=scraped_at)
+
+        self.assertEqual(len(postings), 2)
+        self.assertEqual(len({p.job_id for p in postings}), 2)
