@@ -175,10 +175,18 @@ function App() {
         keywords: splitCommaList(keywordsInput),
       })
       setPreferences(updated)
-      // Re-fetch expanded jobs so is_recommended reflects the newly saved preferences.
-      if (expandedId && jobsByCompany[expandedId]) {
-        const jobs = await api.listCompanyJobs(expandedId)
-        setJobsByCompany((prev) => ({ ...prev, [expandedId]: jobs }))
+      // Re-fetch every already-loaded company's jobs so is_recommended reflects the
+      // newly saved preferences, not just the currently expanded one.
+      const cachedCompanyIds = Object.keys(jobsByCompany)
+      if (cachedCompanyIds.length > 0) {
+        const refreshed = await Promise.all(cachedCompanyIds.map((id) => api.listCompanyJobs(id)))
+        setJobsByCompany((prev) => {
+          const next = { ...prev }
+          cachedCompanyIds.forEach((id, i) => {
+            next[id] = refreshed[i]
+          })
+          return next
+        })
       }
     } catch (e) {
       setPreferencesError(String(e))
