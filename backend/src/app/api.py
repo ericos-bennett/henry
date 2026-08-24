@@ -75,6 +75,9 @@ def scrape_all_companies(request):
     distinct from the per-company is_new-gated email each individual scrape sends.
     Registered before /companies/{company_id} so 'scrape-all' isn't swallowed by
     that parameterized route."""
+    if not request.user.is_staff:
+        raise HttpError(403, "Admin access required")
+
     companies = list(Company.objects.filter(owner=request.user))
     jobs_found = 0
     failed = 0

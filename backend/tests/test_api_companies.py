@@ -93,10 +93,20 @@ def _fake_scrape_result(counts: dict[str, int]):
 
 class ScrapeAllCompaniesTest(TestCase):
     def setUp(self):
-        self.user = get_user_model().objects.create_user(username="alice", password="password123")
+        self.user = get_user_model().objects.create_user(
+            username="alice", password="password123", is_staff=True
+        )
         self.client.force_login(self.user)
         Company.objects.create(id="acme", name="Acme", url="https://acme.example/jobs", frequency="0 * * * *", owner=self.user)
         Company.objects.create(id="globex", name="Globex", url="https://globex.example/jobs", frequency="0 * * * *", owner=self.user)
+
+    def test_rejects_non_staff_users(self):
+        non_staff = get_user_model().objects.create_user(username="bob", password="password123", is_staff=False)
+        self.client.force_login(non_staff)
+
+        response = self.client.post("/api/companies/scrape-all")
+
+        self.assertEqual(response.status_code, 403)
 
     @mock.patch("app.api.notify_all_recommended_jobs")
     @mock.patch("app.api.run_scrape")
