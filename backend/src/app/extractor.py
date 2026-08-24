@@ -3,8 +3,10 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 from abc import ABC, abstractmethod
 from datetime import datetime
+from urllib.parse import urlparse
 
 from pydantic import BaseModel
 
@@ -96,6 +98,19 @@ def get_extractor(settings: LLMSettings) -> LLMExtractor:
     raise NotImplementedError(f"No extractor implemented for provider '{settings.provider}'")
 
 
+def _normalize_job_url(url: str | None) -> str | None:
+    """Some ATSes (e.g. Lever) link straight to a job's application form via a
+    trailing '/apply' segment rather than its description page. Strip it so the
+    saved url points at the description page instead, unless doing so would leave
+    nothing but a bare domain (in which case the original url is kept as-is)."""
+    if not url:
+        return url
+    stripped = re.sub(r"/apply/?$", "", url, flags=re.IGNORECASE)
+    if stripped != url and urlparse(stripped).path not in ("", "/"):
+        return stripped
+    return url
+
+
 def _make_job_id(company_id: str, extracted: ExtractedJob) -> str:
     # Without a url, fall back to title + location rather than title alone — the
     # same role posted in multiple locations (e.g. "Client Delivery Lead" in both
@@ -114,6 +129,7 @@ def to_job_postings(
     postings = []
     seen_job_ids: set[str] = set()
     for job in extracted_jobs:
+        job.url = _normalize_job_url(job.url)
         job_id = _make_job_id(company.id, job)
         if job_id in seen_job_ids:
             # Same company + url/title within one scrape (e.g. a job double-listed
