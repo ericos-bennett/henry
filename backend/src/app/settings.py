@@ -13,10 +13,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-secret-key-change-for-real-deployment")
 DEBUG = True
 
-# Empty by default, which makes Django fall back to ['localhost', '127.0.0.1', '[::1]']
-# while DEBUG=True. Set DJANGO_ALLOWED_HOSTS in .env (comma-separated) to allow other hosts,
-# e.g. for reaching a dev server over LAN.
-ALLOWED_HOSTS = [h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",") if h.strip()]
+# Always includes localhost. Set DJANGO_ALLOWED_HOSTS in .env (comma-separated) to
+# additionally allow other hosts, e.g. a LAN IP for reaching a dev server over LAN.
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]"] + [
+    h.strip() for h in os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",") if h.strip()
+]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
