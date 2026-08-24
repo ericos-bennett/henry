@@ -22,6 +22,21 @@ The LLM provider and model are **not** set in this file — they're read from en
 | `LLM_MODEL` | Model name/id to use for extraction (e.g. `"claude-haiku-4-5"`). |
 | `LLM_API_KEY` | API key for whichever provider `LLM_PROVIDER` names (env var name configurable via `llm.api_key_env` above). |
 
+## Email notifications
+
+When a scrape finds a job that's both new (`JobPosting.is_new`) and a match for a user's saved preferences (`UserPreferences`, see [job-schema.md](./job-schema.md)), the app emails that company's owner. Sent via Django's SMTP backend, configured entirely through env vars in `backend/.env` — no code change needed to switch providers:
+
+| Env var | Description |
+|---|---|
+| `EMAIL_HOST` | SMTP server hostname. Left blank, sending fails (logged, doesn't break the scrape) — notifications are effectively disabled. |
+| `EMAIL_PORT` | SMTP port (default `587`). |
+| `EMAIL_HOST_USER` | SMTP username. |
+| `EMAIL_HOST_PASSWORD` | SMTP password (or app password/API key, depending on the provider). |
+| `EMAIL_USE_TLS` | `true`/`false` (default `true`). |
+| `DEFAULT_FROM_EMAIL` | `From` address on outgoing mail (defaults to `EMAIL_HOST_USER`). |
+
+Any SMTP-capable provider works: a dedicated Gmail account with an app password, AWS SES's SMTP interface, Mailgun, Postmark, etc.
+
 ## Example
 
 ```yaml

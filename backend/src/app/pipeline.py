@@ -6,6 +6,7 @@ from app.config import AppConfig, load_config
 from app.extractor import ExtractionError, LLMExtractor, get_extractor, to_job_postings
 from app.fetcher import fetch_company
 from app.models import Company
+from app.notifications import notify_new_recommended_jobs
 from app.schemas import ScrapeResult
 from app.storage import save_job_postings, write_raw_html
 
@@ -30,6 +31,11 @@ def run_scrape(company: Company) -> ScrapeResult:
         raise ExtractionError(str(e)) from e
     jobs = to_job_postings(extracted, company=company, scraped_at=result.fetched_at)
     saved = save_job_postings(jobs)
+
+    try:
+        notify_new_recommended_jobs(company, saved)
+    except Exception:
+        logger.exception("failed to send notification email for %s", company.id)
 
     logger.info("scraped %s: %d jobs found", company.id, len(saved))
     return ScrapeResult(company_id=company.id, jobs_found=len(saved), scraped_at=result.fetched_at)

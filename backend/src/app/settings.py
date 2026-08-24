@@ -101,3 +101,16 @@ def _database_from_url(url: str) -> dict:
 
 
 DATABASES = {"default": _database_from_url(os.environ["DATABASE_URL"])}
+
+# Provider-agnostic SMTP config for job-notification emails — works with any SMTP
+# relay (a dedicated Gmail account + app password, AWS SES SMTP, Mailgun, Postmark,
+# etc.) via env vars, same pattern as LLM_PROVIDER/LLM_MODEL/LLM_API_KEY in
+# app.config. Left blank, sending simply fails (caught and logged, doesn't break
+# a scrape) rather than requiring SMTP setup to run the app at all.
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "true").lower() == "true"
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER)
