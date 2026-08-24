@@ -36,12 +36,20 @@ class IsRecommendedTest(unittest.TestCase):
         self.assertTrue(is_recommended(make_job("Client Delivery Lead", location="Tokyo, Japan"), prefs))
         self.assertFalse(is_recommended(make_job("Client Delivery Lead", location="Melbourne, Australia"), prefs))
 
-    def test_location_only_excludes_jobs_with_no_location(self):
+    def test_location_only_treats_missing_location_as_neutral(self):
+        # Career pages that don't expose location as a distinct field (e.g. Voltus)
+        # shouldn't have every posting permanently excluded once a location
+        # preference is set — falls back to keyword-only matching instead.
         prefs = make_prefs(locations=["Tokyo"])
-        self.assertFalse(is_recommended(make_job("Client Delivery Lead", location=None), prefs))
+        self.assertTrue(is_recommended(make_job("Client Delivery Lead", location=None), prefs))
 
     def test_both_set_requires_both_to_match(self):
         prefs = make_prefs(locations=["Tokyo"], keywords=["engineer"])
         self.assertTrue(is_recommended(make_job("Software Engineer", location="Tokyo, Japan"), prefs))
         self.assertFalse(is_recommended(make_job("Software Engineer", location="Melbourne, Australia"), prefs))
         self.assertFalse(is_recommended(make_job("Client Delivery Lead", location="Tokyo, Japan"), prefs))
+
+    def test_both_set_but_missing_location_falls_back_to_keyword_only(self):
+        prefs = make_prefs(locations=["Tokyo"], keywords=["engineer"])
+        self.assertTrue(is_recommended(make_job("Software Engineer", location=None), prefs))
+        self.assertFalse(is_recommended(make_job("Client Delivery Lead", location=None), prefs))
