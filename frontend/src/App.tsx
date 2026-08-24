@@ -365,25 +365,7 @@ function App() {
         ))}
       </ul>
 
-      <h2>Preferences</h2>
-      <form onSubmit={savePreferences} className="add-company-form">
-        <input
-          placeholder="Preferred Locations (comma-separated)"
-          value={locationsInput}
-          onChange={(e) => setLocationsInput(e.target.value)}
-        />
-        <input
-          placeholder="Keywords (comma-separated)"
-          value={keywordsInput}
-          onChange={(e) => setKeywordsInput(e.target.value)}
-        />
-        <button type="submit" disabled={preferencesSaving}>
-          {preferencesSaving ? 'Saving…' : 'Save'}
-        </button>
-      </form>
-      {preferencesError && <p className="error">{preferencesError}</p>}
-
-      <h2>Add a company</h2>
+      <h2>Add a Company</h2>
       <form onSubmit={addCompany} className="add-company-form">
         <input
           placeholder="Name"
@@ -410,6 +392,24 @@ function App() {
         <button type="submit">Add</button>
       </form>
       {formError && <p className="error">{formError}</p>}
+
+      <h2>Preferences</h2>
+      <form onSubmit={savePreferences} className="add-company-form">
+        <input
+          placeholder="Preferred Locations (comma-separated)"
+          value={locationsInput}
+          onChange={(e) => setLocationsInput(e.target.value)}
+        />
+        <input
+          placeholder="Keywords (comma-separated)"
+          value={keywordsInput}
+          onChange={(e) => setKeywordsInput(e.target.value)}
+        />
+        <button type="submit" disabled={preferencesSaving}>
+          {preferencesSaving ? 'Saving…' : 'Save'}
+        </button>
+      </form>
+      {preferencesError && <p className="error">{preferencesError}</p>}
 
       {user.is_staff && (
         <div className="scrape-all">
