@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from abc import ABC, abstractmethod
 from datetime import datetime
 
@@ -10,6 +11,8 @@ from pydantic import BaseModel
 from app.config import LLMSettings
 from app.models import Company, JobPosting
 from app.schema import ExtractedJob
+
+logger = logging.getLogger(__name__)
 
 EXTRACTION_PROMPT = (
     "You are given the visible text of a company's career page. "
@@ -102,11 +105,23 @@ def to_job_postings(
     scraped_at: datetime,
 ) -> list[JobPosting]:
     postings = []
+    seen_job_ids: set[str] = set()
     for job in extracted_jobs:
+        job_id = _make_job_id(company.id, job)
+        if job_id in seen_job_ids:
+            # Same company + url/title within one scrape (e.g. a job double-listed
+            # under two categories on the page) would otherwise collide on the
+            # (job_id, scraped_at) unique constraint and crash the whole batch.
+            logger.warning(
+                "skipping duplicate job_id %s in scrape of %s: %r", job_id, company.id, job.title
+            )
+            continue
+        seen_job_ids.add(job_id)
+
         salary = job.salary_range
         postings.append(
             JobPosting(
-                job_id=_make_job_id(company.id, job),
+                job_id=job_id,
                 source_company=company,
                 source_url=company.url,
                 scraped_at=scraped_at,
