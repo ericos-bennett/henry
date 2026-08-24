@@ -9,10 +9,6 @@ const FREQUENCY_OPTIONS = [
   { label: 'Weekly', value: '0 8 * * 0' },
 ]
 
-function frequencyLabel(cron: string): string {
-  return FREQUENCY_OPTIONS.find((option) => option.value === cron)?.label ?? cron
-}
-
 function App() {
   const [user, setUser] = useState<User | null>(null)
   const [authChecked, setAuthChecked] = useState(false)
@@ -115,6 +111,15 @@ function App() {
     }
   }
 
+  const changeFrequency = async (company: Company, frequency: string) => {
+    try {
+      const updated = await api.setCompanyFrequency(company.id, frequency)
+      setCompanies((prev) => prev.map((c) => (c.id === company.id ? updated : c)))
+    } catch (e) {
+      setError(String(e))
+    }
+  }
+
   const toggleEnabled = async (company: Company) => {
     try {
       const updated = await api.setCompanyEnabled(company.id, !company.enabled)
@@ -199,7 +204,18 @@ function App() {
                   <a href={company.url} target="_blank" rel="noreferrer">
                     {company.url}
                   </a>{' '}
-                  · {frequencyLabel(company.frequency)}
+                  ·{' '}
+                  <select
+                    className="frequency-select"
+                    value={company.frequency}
+                    onChange={(e) => changeFrequency(company, e.target.value)}
+                  >
+                    {FREQUENCY_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div className="actions">

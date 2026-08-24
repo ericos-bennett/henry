@@ -17,6 +17,12 @@ ALLOWED_FREQUENCIES = {
 }
 
 
+def _validate_frequency(value: str) -> str:
+    if value not in ALLOWED_FREQUENCIES:
+        raise ValueError(f"'{value}' is not one of the allowed frequencies: {sorted(ALLOWED_FREQUENCIES)}")
+    return value
+
+
 class CompanyOut(ModelSchema):
     class Meta:
         model = Company
@@ -32,13 +38,17 @@ class CompanyIn(Schema):
     @field_validator("frequency")
     @classmethod
     def validate_frequency(cls, value: str) -> str:
-        if value not in ALLOWED_FREQUENCIES:
-            raise ValueError(f"'{value}' is not one of the allowed frequencies: {sorted(ALLOWED_FREQUENCIES)}")
-        return value
+        return _validate_frequency(value)
 
 
 class CompanyPatch(Schema):
-    enabled: bool
+    enabled: bool | None = None
+    frequency: str | None = None
+
+    @field_validator("frequency")
+    @classmethod
+    def validate_frequency(cls, value: str | None) -> str | None:
+        return _validate_frequency(value) if value is not None else value
 
 
 class JobPostingOut(ModelSchema):

@@ -64,6 +64,11 @@ h1 {
   font-size: 0.85rem;
 }
 
+.frequency-select {
+  font-size: 0.85rem;
+  padding: 0.1rem 0.3rem;
+}
+
 .jobs {
   margin-top: 0.75rem;
   padding-top: 0.75rem;

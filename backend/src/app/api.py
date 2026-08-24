@@ -77,7 +77,10 @@ def create_company(request, payload: CompanyIn):
 @api.patch("/companies/{company_id}", response=CompanyOut)
 def update_company(request, company_id: str, payload: CompanyPatch):
     company = get_object_or_404(Company, pk=company_id, owner=request.user)
-    company.enabled = payload.enabled
+    if payload.enabled is not None:
+        company.enabled = payload.enabled
+    if payload.frequency is not None:
+        company.frequency = payload.frequency
     company.save()
     return company
 
