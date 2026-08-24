@@ -186,7 +186,7 @@ function App() {
         <h1>Career Scraper</h1>
         <div className="actions">
           <span className="muted">{user.username}</span>
-          <button onClick={handleLogout}>Sign out</button>
+          <button onClick={handleLogout}>Sign Out</button>
         </div>
       </div>
 
@@ -223,7 +223,7 @@ function App() {
                   {scrapingId === company.id ? 'Scraping…' : 'Scrape'}
                 </button>
                 <button onClick={() => toggleJobs(company.id)}>
-                  {expandedId === company.id ? 'Hide jobs' : 'View jobs'}
+                  {expandedId === company.id ? 'Hide jobs' : 'View Jobs'}
                 </button>
                 <button onClick={() => toggleEnabled(company)}>
                   {company.enabled ? 'Disable' : 'Enable'}
@@ -263,13 +263,13 @@ function App() {
       <h2>Add a company</h2>
       <form onSubmit={addCompany} className="add-company-form">
         <input
-          placeholder="name"
+          placeholder="Name"
           value={newCompany.name}
           onChange={(e) => setNewCompany({ ...newCompany, name: e.target.value })}
           required
         />
         <input
-          placeholder="career page URL"
+          placeholder="Career Page URL"
           value={newCompany.url}
           onChange={(e) => setNewCompany({ ...newCompany, url: e.target.value })}
           required
