@@ -72,11 +72,13 @@ This installs Python dependencies (`uv sync`), installs the Playwright browser, 
 
 #### 4. Seed some companies
 
-[`tests/test_seed_companies.py`](./backend/tests/test_seed_companies.py) creates 3 real companies (Uplight, Voltus, Development Seed) by hitting `POST /api/companies` on the server you just started — a quick way to bootstrap data on a fresh database. It's safe to re-run (companies that already exist are skipped). In a second terminal:
+[`tests/test_seed_companies.py`](./backend/tests/test_seed_companies.py) creates 3 real companies (Uplight, Voltus, Development Seed), owned by a user account, by logging in and then hitting `POST /api/companies` on the server you just started — a quick way to bootstrap data on a fresh database. It's safe to re-run (companies that already exist, for that user, are skipped).
+
+It needs a user account to log in as — create one with `uv run python manage.py createsuperuser` or via the admin panel at `/controls/` — passed as `CAREER_SCRAPER_SEED_USERNAME`/`CAREER_SCRAPER_SEED_PASSWORD`. Set both inline on the command rather than in `.env`, since they're only needed for this one-off run, not by the running app. In a second terminal:
 
 ```sh
 cd backend
-uv run python tests/test_seed_companies.py
+CAREER_SCRAPER_SEED_USERNAME=<username> CAREER_SCRAPER_SEED_PASSWORD=<password> uv run python tests/test_seed_companies.py
 ```
 
 Companies are also manageable directly via SQL — see [config-schema.md](./docs/config-schema.md).

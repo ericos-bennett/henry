@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from django.conf import settings
 from django.db import models
 
 
@@ -9,6 +10,11 @@ class Company(models.Model):
     url = models.URLField(max_length=500)
     frequency = models.CharField(max_length=100)
     enabled = models.BooleanField(default=True)
+    # Nullable so existing rows aren't broken by this migration; assign an owner to
+    # each pre-existing company via the admin panel after creating user accounts.
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="companies", null=True, blank=True
+    )
 
     def __str__(self) -> str:
         return self.id

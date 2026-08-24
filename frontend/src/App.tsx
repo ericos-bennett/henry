@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import './App.css'
-import { api, type Company, type JobPosting, type NewCompany } from './api'
+import { ApiError, api, type Company, type JobPosting, type NewCompany, type User } from './api'
 
 const FREQUENCY_OPTIONS = [
   { label: 'Hourly', value: '0 * * * *' },
@@ -14,6 +14,12 @@ function frequencyLabel(cron: string): string {
 }
 
 function App() {
+  const [user, setUser] = useState<User | null>(null)
+  const [authChecked, setAuthChecked] = useState(false)
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [loginError, setLoginError] = useState<string | null>(null)
+
   const [companies, setCompanies] = useState<Company[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -41,7 +47,35 @@ function App() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(loadCompanies, [])
+  useEffect(() => {
+    api
+      .me()
+      .then(setUser)
+      .catch(() => setUser(null))
+      .finally(() => setAuthChecked(true))
+  }, [])
+
+  useEffect(() => {
+    if (user) loadCompanies()
+  }, [user])
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoginError(null)
+    try {
+      const loggedInUser = await api.login(username, password)
+      setUser(loggedInUser)
+      setPassword('')
+    } catch (e) {
+      setLoginError(e instanceof ApiError && e.status === 401 ? 'Invalid username or password' : String(e))
+    }
+  }
+
+  const handleLogout = async () => {
+    await api.logout()
+    setUser(null)
+    setCompanies([])
+  }
 
   const toggleJobs = async (id: string) => {
     if (expandedId === id) {
@@ -111,9 +145,45 @@ function App() {
     }
   }
 
+  if (!authChecked) {
+    return <div className="page" />
+  }
+
+  if (!user) {
+    return (
+      <div className="page">
+        <h1>Career Scraper</h1>
+        <h2>Sign in</h2>
+        <form onSubmit={handleLogin} className="add-company-form">
+          <input
+            placeholder="username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+          />
+          <input
+            type="password"
+            placeholder="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          <button type="submit">Sign in</button>
+        </form>
+        {loginError && <p className="error">{loginError}</p>}
+      </div>
+    )
+  }
+
   return (
     <div className="page">
-      <h1>Career Scraper</h1>
+      <div className="company-row">
+        <h1>Career Scraper</h1>
+        <div className="actions">
+          <span className="muted">{user.username}</span>
+          <button onClick={handleLogout}>Sign out</button>
+        </div>
+      </div>
 
       {loading && <p>Loading companies…</p>}
       {error && <p className="error">{error}</p>}

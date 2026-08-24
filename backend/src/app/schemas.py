@@ -51,3 +51,12 @@ class ScrapeResult(Schema):
     company_id: str
     jobs_found: int
     scraped_at: datetime
+
+
+class LoginIn(Schema):
+    username: str
+    password: str
+
+
+class UserOut(Schema):
+    username: str
