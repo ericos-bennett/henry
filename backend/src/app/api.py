@@ -71,6 +71,12 @@ def get_company(request, company_id: str):
 @api.post("/companies", response={201: CompanyOut})
 def create_company(request, payload: CompanyIn):
     company = Company.objects.create(id=slugify(payload.name), owner=request.user, **payload.dict())
+    try:
+        run_scrape(company)
+    except Exception:
+        # The company is created either way — a failed first scrape can be retried
+        # via the "Scrape" button, same as any other scrape failure.
+        logger.exception("initial scrape failed for %s", company.id)
     return 201, company
 
 

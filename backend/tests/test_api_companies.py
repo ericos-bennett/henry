@@ -1,8 +1,9 @@
-"""Hermetic tests for PATCH /api/companies/{id}, using Django's own test database."""
+"""Hermetic tests for /api/companies endpoints, using Django's own test database."""
 
 from __future__ import annotations
 
 import json
+from unittest import mock
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
@@ -54,3 +55,28 @@ class UpdateCompanyTest(TestCase):
         self.assertEqual(response.status_code, 422)
         self.company.refresh_from_db()
         self.assertEqual(self.company.frequency, "0 * * * *")
+
+
+class CreateCompanyTest(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="alice", password="password123")
+        self.client.force_login(self.user)
+
+    def create(self):
+        body = {"name": "Acme", "url": "https://acme.example/jobs", "frequency": "0 * * * *"}
+        return self.client.post("/api/companies", data=json.dumps(body), content_type="application/json")
+
+    @mock.patch("app.api.run_scrape")
+    def test_scrapes_immediately_after_creation(self, mock_run_scrape):
+        response = self.create()
+
+        self.assertEqual(response.status_code, 201)
+        company = Company.objects.get(id="acme")
+        mock_run_scrape.assert_called_once_with(company)
+
+    @mock.patch("app.api.run_scrape", side_effect=RuntimeError("scrape failed"))
+    def test_company_still_created_if_initial_scrape_fails(self, mock_run_scrape):
+        response = self.create()
+
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(Company.objects.filter(id="acme").exists())
