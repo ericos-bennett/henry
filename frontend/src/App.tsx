@@ -413,7 +413,7 @@ function App() {
             </form>
 
             <label className="field schedule-field">
-              <span>Schedule</span>
+              <span>Scrape Frequency</span>
               <select
                 className="frequency-select"
                 value={editingCompany.frequency}
