@@ -16,12 +16,13 @@ Goal: a working end-to-end pipeline for a small, hand-curated list of companies.
 - Structured logging per run (per-company success/failure, job counts).
 - Multi-user auth (Django sessions) with per-user company/preferences ownership, and OpenTelemetry-based logging export — both done ahead of schedule, pulled forward from later phases.
 - Per-user job preferences (`locations`/`keywords`) and a recommendation match against them (`app/matching.py`), surfaced in the UI and used to filter notification emails — pulled forward from V3's notifications work.
-- Email notifications (SMTP, provider-agnostic) when a scrape finds a new job matching preferences, plus a staff-only "scrape all + combined digest" action — pulled forward from V3, ahead of the diffing/change-tracking work in V2 it was originally planned to sit on top of. This only works because `save_job_postings()` already flags `is_new` per posting by diffing against the previous run for that company; broader diff/history reporting (below) is still open.
+- Email notifications (SMTP, provider-agnostic) when a scrape finds a new job matching preferences, plus a staff-only "scrape all + combined digest" action — pulled forward from V3, ahead of the diffing/change-tracking work in V2 it was originally planned to sit on top of. This only works because `JobPosting.is_new` is derived per posting (`first_scrape_timestamp == latest_scrape_timestamp`); broader diff/history reporting (below) is still open.
+- `JobPosting` rows collapsed from one-per-scrape to one-per-lifetime: `save_job_postings()` updates a row in place across consecutive scrapes that still find the job, instead of inserting a duplicate every run, and only starts a new row when a job is genuinely new or reappears after a gap — see [job-schema.md](./job-schema.md). A step toward the "Diffing/change detection" V2 item below, though the fuller history/report is still open.
 
 ## V2 — Hardening & change tracking
 
 - **Scheduler**: run each company's scrape automatically on its configured `frequency`, instead of only on demand via `POST /api/companies/{id}/scrape` (or the staff-only `scrape-all`).
-- **Diffing/change detection**: `is_new` (per posting, vs. the immediately preceding run) exists, but there's no query/report for a fuller history of changed/removed jobs over time yet.
+- **Diffing/change detection**: each `JobPosting` row now tracks its own lifetime (`first_scrape_timestamp`/`latest_scrape_timestamp`, `is_new`), and a reappearance after a gap gets its own row — but there's still no query/report surfacing that history (e.g. "jobs removed since last week", "how long has this posting been up").
 - Pagination / infinite-scroll support in the Fetcher, driven by per-company config hints.
 - Per-company fetch customization (e.g. a wait-for-selector override, custom headers, cookies/auth) if network-idle alone proves insufficient for some pages — dropped from v1's `Company` model since it's not something a user can supply upfront without inspecting the page first (see [Decisions](#decisions)).
 - robots.txt compliance and configurable rate limiting/politeness between requests.

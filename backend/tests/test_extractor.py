@@ -39,11 +39,11 @@ class AnthropicExtractorTest(unittest.TestCase):
 
 
 class ToJobPostingsTest(unittest.TestCase):
-    def test_dedupes_jobs_that_hash_to_the_same_job_id(self):
+    def test_dedupes_jobs_that_hash_to_the_same_job_key(self):
         # Two ExtractedJobs with the same url (or same title when url is missing)
-        # hash to the same job_id via _make_job_id — e.g. a job double-listed under
-        # two categories on the career page. Without dedup this crashes bulk_create
-        # on the (job_id, scraped_at) unique constraint.
+        # hash to the same job_key via _make_job_key — e.g. a job double-listed under
+        # two categories on the career page. Without dedup, save_job_postings()
+        # would try to treat both as the same continuing/new lifetime within one batch.
         company = Company(id="acme", name="Acme", url="https://acme.example/jobs", frequency="0 * * * *")
         scraped_at = datetime(2026, 8, 24, tzinfo=timezone.utc)
         jobs = [
@@ -55,12 +55,12 @@ class ToJobPostingsTest(unittest.TestCase):
         postings = to_job_postings(jobs, company=company, scraped_at=scraped_at)
 
         self.assertEqual([p.title for p in postings], ["Software Engineer", "Designer"])
-        self.assertEqual(len({p.job_id for p in postings}), len(postings))
+        self.assertEqual(len({p.job_key for p in postings}), len(postings))
 
     def test_keeps_same_title_jobs_in_different_locations(self):
         # e.g. Kraken listing "Client Delivery Lead" separately for Tokyo and
         # Melbourne, with no url to distinguish them — these are two real postings,
-        # not a duplicate, so both must survive with distinct job_ids.
+        # not a duplicate, so both must survive with distinct job_keys.
         company = Company(id="kraken", name="Kraken", url="https://jobs.ashbyhq.com/krakentech", frequency="0 * * * *")
         scraped_at = datetime(2026, 8, 24, tzinfo=timezone.utc)
         jobs = [
@@ -71,7 +71,7 @@ class ToJobPostingsTest(unittest.TestCase):
         postings = to_job_postings(jobs, company=company, scraped_at=scraped_at)
 
         self.assertEqual(len(postings), 2)
-        self.assertEqual(len({p.job_id for p in postings}), 2)
+        self.assertEqual(len({p.job_key for p in postings}), 2)
 
     def test_strips_trailing_apply_segment_from_job_url(self):
         # Lever links straight to the application form via a trailing '/apply'

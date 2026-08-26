@@ -20,11 +20,13 @@ class JobRecommendationTest(TestCase):
         )
         scraped_at = datetime(2026, 8, 24, tzinfo=timezone.utc)
         JobPosting.objects.create(
-            job_id="a", source_company=self.company, source_url=self.company.url, scraped_at=scraped_at,
+            job_key="a", source_company=self.company, source_url=self.company.url,
+            first_scrape_timestamp=scraped_at, latest_scrape_timestamp=scraped_at,
             title="Software Engineer", location="Tokyo, Japan",
         )
         JobPosting.objects.create(
-            job_id="b", source_company=self.company, source_url=self.company.url, scraped_at=scraped_at,
+            job_key="b", source_company=self.company, source_url=self.company.url,
+            first_scrape_timestamp=scraped_at, latest_scrape_timestamp=scraped_at,
             title="Product Designer", location="Tokyo, Japan",
         )
 
@@ -49,7 +51,7 @@ class JobRecommendationTest(TestCase):
         self.assertFalse(by_title["Product Designer"])
 
     def test_cross_company_jobs_endpoint_also_annotates(self):
-        self.set_preferences(keywords=["engineer"])
+        self.set_preferences(locations=["Tokyo"], keywords=["engineer"])
 
         response = self.client.get("/api/jobs")
         by_title = {job["title"]: job["is_recommended"] for job in response.json()}

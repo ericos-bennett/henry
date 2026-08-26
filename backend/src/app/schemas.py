@@ -53,6 +53,7 @@ class CompanyPatch(Schema):
 
 class JobPostingOut(ModelSchema):
     is_recommended: bool = False
+    is_new: bool = False
 
     class Meta:
         model = JobPosting
@@ -61,6 +62,10 @@ class JobPostingOut(ModelSchema):
     @staticmethod
     def resolve_is_recommended(obj) -> bool:
         return getattr(obj, "_is_recommended", False)
+
+    @staticmethod
+    def resolve_is_new(obj) -> bool:
+        return obj.is_new
 
 
 class PreferencesOut(ModelSchema):

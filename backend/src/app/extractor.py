@@ -111,7 +111,7 @@ def _normalize_job_url(url: str | None) -> str | None:
     return url
 
 
-def _make_job_id(company_id: str, extracted: ExtractedJob) -> str:
+def _make_job_key(company_id: str, extracted: ExtractedJob) -> str:
     # Without a url, fall back to title + location rather than title alone — the
     # same role posted in multiple locations (e.g. "Client Delivery Lead" in both
     # Tokyo and Melbourne) is two distinct postings, not one.
@@ -127,27 +127,28 @@ def to_job_postings(
     scraped_at: datetime,
 ) -> list[JobPosting]:
     postings = []
-    seen_job_ids: set[str] = set()
+    seen_job_keys: set[str] = set()
     for job in extracted_jobs:
         job.url = _normalize_job_url(job.url)
-        job_id = _make_job_id(company.id, job)
-        if job_id in seen_job_ids:
+        job_key = _make_job_key(company.id, job)
+        if job_key in seen_job_keys:
             # Same company + url/title within one scrape (e.g. a job double-listed
-            # under two categories on the page) would otherwise collide on the
-            # (job_id, scraped_at) unique constraint and crash the whole batch.
+            # under two categories on the page) would otherwise be treated as two
+            # separate jobs sharing one job_key by save_job_postings().
             logger.warning(
-                "skipping duplicate job_id %s in scrape of %s: %r", job_id, company.id, job.title
+                "skipping duplicate job_key %s in scrape of %s: %r", job_key, company.id, job.title
             )
             continue
-        seen_job_ids.add(job_id)
+        seen_job_keys.add(job_key)
 
         salary = job.salary_range
         postings.append(
             JobPosting(
-                job_id=job_id,
+                job_key=job_key,
                 source_company=company,
                 source_url=company.url,
-                scraped_at=scraped_at,
+                first_scrape_timestamp=scraped_at,
+                latest_scrape_timestamp=scraped_at,
                 title=job.title,
                 url=job.url,
                 location=job.location,

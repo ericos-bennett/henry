@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from django.contrib.auth import get_user_model
 from django.core import mail
@@ -15,9 +15,11 @@ SCRAPED_AT = datetime(2026, 8, 24, tzinfo=timezone.utc)
 
 
 def make_job(company: Company, title: str, *, is_new: bool, location: str | None = None) -> JobPosting:
+    first = SCRAPED_AT if is_new else SCRAPED_AT - timedelta(days=1)
     return JobPosting(
-        job_id=title, source_company=company, source_url=company.url, scraped_at=SCRAPED_AT,
-        title=title, location=location, is_new=is_new,
+        job_key=title, source_company=company, source_url=company.url,
+        first_scrape_timestamp=first, latest_scrape_timestamp=SCRAPED_AT,
+        title=title, location=location,
     )
 
 
@@ -29,7 +31,10 @@ class NotifyNewRecommendedJobsTest(TestCase):
         self.company = Company.objects.create(
             id="acme", name="Acme", url="https://acme.example/jobs", frequency="0 * * * *", owner=self.owner
         )
-        UserPreferences.objects.create(owner=self.owner, keywords=["engineer"])
+        # locations is required alongside keywords for anything to match — most jobs
+        # in this test class have no location (neutral/bypassed), except the ones in
+        # test_batches_multiple_matches_into_one_email, which these two cover.
+        UserPreferences.objects.create(owner=self.owner, locations=["Tokyo", "Remote"], keywords=["engineer"])
 
     def test_sends_email_for_a_new_recommended_job(self):
         jobs = [make_job(self.company, "Software Engineer", is_new=True)]
@@ -96,12 +101,27 @@ class NotifyAllRecommendedJobsTest(TestCase):
         self.owner = get_user_model().objects.create_user(
             username="alice", password="password123", email="alice@example.com"
         )
-        UserPreferences.objects.create(owner=self.owner, keywords=["engineer"])
+        # locations is required alongside keywords for anything to match; every job
+        # created via create_job() below has no location set, so this is neutral/bypassed.
+        UserPreferences.objects.create(owner=self.owner, locations=["Remote"], keywords=["engineer"])
 
-    def create_job(self, company: Company, title: str, *, scraped_at: datetime, **kwargs):
+    def create_job(
+        self,
+        company: Company,
+        title: str,
+        *,
+        scraped_at: datetime,
+        first_scraped_at: datetime | None = None,
+        **kwargs,
+    ):
         return JobPosting.objects.create(
-            job_id=f"{company.id}:{title}:{scraped_at}", source_company=company, source_url=company.url,
-            scraped_at=scraped_at, title=title, **kwargs,
+            job_key=f"{company.id}:{title}",
+            source_company=company,
+            source_url=company.url,
+            first_scrape_timestamp=first_scraped_at or scraped_at,
+            latest_scrape_timestamp=scraped_at,
+            title=title,
+            **kwargs,
         )
 
     def test_groups_matches_across_companies_into_one_email(self):
@@ -123,7 +143,8 @@ class NotifyAllRecommendedJobsTest(TestCase):
 
     def test_includes_matches_regardless_of_is_new(self):
         acme = Company.objects.create(id="acme", name="Acme", url="https://acme.example/jobs", frequency="0 * * * *", owner=self.owner)
-        self.create_job(acme, "Software Engineer", scraped_at=SCRAPED_AT, is_new=False)
+        earlier = datetime(2026, 8, 1, tzinfo=timezone.utc)
+        self.create_job(acme, "Software Engineer", scraped_at=SCRAPED_AT, first_scraped_at=earlier)
 
         notify_all_recommended_jobs(self.owner)
 

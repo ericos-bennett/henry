@@ -8,8 +8,8 @@ from app.matching import is_recommended
 from app.models import JobPosting, UserPreferences
 
 
-def make_job(title: str, location: str | None = None, description: str | None = None) -> JobPosting:
-    return JobPosting(title=title, location=location, description=description)
+def make_job(title: str, location: str | None = None) -> JobPosting:
+    return JobPosting(title=title, location=location)
 
 
 def make_prefs(locations: list[str] | None = None, keywords: list[str] | None = None) -> UserPreferences:
@@ -21,27 +21,15 @@ class IsRecommendedTest(unittest.TestCase):
         job = make_job("Software Engineer", location="Remote")
         self.assertFalse(is_recommended(job, make_prefs()))
 
-    def test_keyword_only_matches_title_case_insensitively(self):
+    def test_keywords_only_means_nothing_is_recommended(self):
+        # Both locations and keywords must be set for anything to match — a
+        # preference dimension the user hasn't configured isn't "no opinion".
         prefs = make_prefs(keywords=["engineer"])
-        self.assertTrue(is_recommended(make_job("Software Engineer"), prefs))
-        self.assertFalse(is_recommended(make_job("Product Designer"), prefs))
+        self.assertFalse(is_recommended(make_job("Software Engineer"), prefs))
 
-    def test_keyword_match_does_not_check_description(self):
-        prefs = make_prefs(keywords=["kubernetes"])
-        job = make_job("Software Engineer", description="You'll work with Kubernetes daily.")
-        self.assertFalse(is_recommended(job, prefs))
-
-    def test_location_only_matches_substring_case_insensitively(self):
+    def test_locations_only_means_nothing_is_recommended(self):
         prefs = make_prefs(locations=["Tokyo"])
-        self.assertTrue(is_recommended(make_job("Client Delivery Lead", location="Tokyo, Japan"), prefs))
-        self.assertFalse(is_recommended(make_job("Client Delivery Lead", location="Melbourne, Australia"), prefs))
-
-    def test_location_only_treats_missing_location_as_neutral(self):
-        # Career pages that don't expose location as a distinct field (e.g. Voltus)
-        # shouldn't have every posting permanently excluded once a location
-        # preference is set — falls back to keyword-only matching instead.
-        prefs = make_prefs(locations=["Tokyo"])
-        self.assertTrue(is_recommended(make_job("Client Delivery Lead", location=None), prefs))
+        self.assertFalse(is_recommended(make_job("Client Delivery Lead", location="Tokyo, Japan"), prefs))
 
     def test_both_set_requires_both_to_match(self):
         prefs = make_prefs(locations=["Tokyo"], keywords=["engineer"])
@@ -49,7 +37,14 @@ class IsRecommendedTest(unittest.TestCase):
         self.assertFalse(is_recommended(make_job("Software Engineer", location="Melbourne, Australia"), prefs))
         self.assertFalse(is_recommended(make_job("Client Delivery Lead", location="Tokyo, Japan"), prefs))
 
+    def test_both_set_matches_case_insensitively(self):
+        prefs = make_prefs(locations=["tokyo"], keywords=["ENGINEER"])
+        self.assertTrue(is_recommended(make_job("Software Engineer", location="Tokyo, Japan"), prefs))
+
     def test_both_set_but_missing_location_falls_back_to_keyword_only(self):
+        # Career pages that don't expose location as a distinct field (e.g. Voltus)
+        # shouldn't have every posting permanently excluded once a location
+        # preference is set — falls back to keyword-only matching instead.
         prefs = make_prefs(locations=["Tokyo"], keywords=["engineer"])
         self.assertTrue(is_recommended(make_job("Software Engineer", location=None), prefs))
         self.assertFalse(is_recommended(make_job("Client Delivery Lead", location=None), prefs))

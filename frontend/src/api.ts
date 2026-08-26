@@ -8,10 +8,11 @@ export interface Company {
 
 export interface JobPosting {
   id: number
-  job_id: string
+  job_key: string
   source_company: string
   source_url: string
-  scraped_at: string
+  first_scrape_timestamp: string
+  latest_scrape_timestamp: string
   is_new: boolean
   is_recommended: boolean
   title: string

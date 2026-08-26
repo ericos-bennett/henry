@@ -22,10 +22,18 @@ def run_scrape(company: Company, *, notify: bool = True) -> ScrapeResult:
     Shared by POST /companies/{id}/scrape and the scheduler tick so the
     orchestration logic isn't duplicated. `notify=False` skips the per-company
     is_new-gated notification email — used by the "scrape all" flow, which sends
-    one combined digest across all companies instead.
+    one combined digest across all companies instead. The email is also always
+    skipped on a company's first-ever scrape, regardless of `notify`.
     """
     result = fetch_company(company, config.settings.playwright)
     write_raw_html(config.settings.storage.root, company.id, result.fetched_at, result.html)
+
+    # Checked before saving: every job on a company's very first scrape has
+    # first_scrape_timestamp == latest_scrape_timestamp (is_new=True) by
+    # construction, since there's nothing earlier to compare against — without
+    # this check that would email the owner about every job the moment a
+    # company is added, rather than only genuinely new postings going forward.
+    is_first_scrape = not company.job_postings.exists()
 
     try:
         extracted = extractor.extract(result.text)
@@ -34,7 +42,7 @@ def run_scrape(company: Company, *, notify: bool = True) -> ScrapeResult:
     jobs = to_job_postings(extracted, company=company, scraped_at=result.fetched_at)
     saved = save_job_postings(jobs)
 
-    if notify:
+    if notify and not is_first_scrape:
         try:
             notify_new_recommended_jobs(company, saved)
         except Exception:

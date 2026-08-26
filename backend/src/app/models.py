@@ -22,13 +22,18 @@ class Company(models.Model):
 
 
 class JobPosting(models.Model):
-    job_id = models.CharField(max_length=64)
+    # Stable content identity of the posting (company + url, or title+location
+    # fallback) — unchanged across reappearances. Not unique: the same job_key
+    # can have multiple historical rows, one per lifetime (a gap between two
+    # rows means a reappearance, not a continuation — see save_job_postings()
+    # in app/storage.py). Row identity itself is just the auto pk (`id`).
+    job_key = models.CharField(max_length=64, db_index=True)
     source_company = models.ForeignKey(
         Company, on_delete=models.CASCADE, related_name="job_postings"
     )
     source_url = models.URLField(max_length=500)
-    scraped_at = models.DateTimeField()
-    is_new = models.BooleanField(default=False)
+    first_scrape_timestamp = models.DateTimeField()
+    latest_scrape_timestamp = models.DateTimeField()
 
     title = models.CharField(max_length=500)
     url = models.URLField(max_length=500, null=True, blank=True)
@@ -42,15 +47,23 @@ class JobPosting(models.Model):
     salary_currency = models.CharField(max_length=10, null=True, blank=True)
 
     class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=["job_id", "scraped_at"], name="unique_job_per_run"),
-        ]
         indexes = [
-            models.Index(fields=["source_company", "scraped_at"]),
+            models.Index(
+                fields=["source_company", "latest_scrape_timestamp"],
+                name="jp_company_latest_idx",
+            ),
+            models.Index(
+                fields=["source_company", "job_key"],
+                name="jp_company_jobkey_idx",
+            ),
         ]
 
     def __str__(self) -> str:
         return f"{self.title} ({self.source_company_id})"
+
+    @property
+    def is_new(self) -> bool:
+        return self.first_scrape_timestamp == self.latest_scrape_timestamp
 
 
 class UserPreferences(models.Model):

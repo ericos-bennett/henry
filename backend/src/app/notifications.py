@@ -25,11 +25,11 @@ def notify_new_recommended_jobs(company: Company, jobs: list[JobPosting]) -> Non
 
 
 def _latest_jobs(company: Company) -> list[JobPosting]:
-    qs = company.job_postings.all().order_by("-scraped_at")
+    qs = company.job_postings.all().order_by("-latest_scrape_timestamp")
     latest = qs.first()
     if latest is None:
         return []
-    return list(qs.filter(scraped_at=latest.scraped_at))
+    return list(qs.filter(latest_scrape_timestamp=latest.latest_scrape_timestamp))
 
 
 def notify_all_recommended_jobs(user: AbstractUser) -> None:

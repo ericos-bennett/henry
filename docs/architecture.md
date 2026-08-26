@@ -26,13 +26,13 @@ A long-running process component that keeps one schedule per company, triggering
 Given a `Company` row's URL, launches/reuses a headless browser session, navigates to the page, waits for network idle, and returns the rendered HTML/text. Handles basic pagination/infinite-scroll if configured for that company (see open questions in [roadmap.md](./roadmap.md) for depth-of-crawl decisions). Applies a request timeout; retry/backoff and rate limiting are out of scope for V1 (see [roadmap.md](./roadmap.md)).
 
 **Extractor (LLM, provider-agnostic)**
-Takes the fetched page text and produces a list of `ExtractedJob` (Pydantic — see [job-schema.md](./job-schema.md)). Defined behind an abstract interface (`LLMExtractor.extract(content: str) -> list[ExtractedJob]`) so the concrete provider is swappable via `LLM_PROVIDER`/`LLM_MODEL` env vars — Claude is the recommended default implementation, with Gemini also wired up. Uses structured JSON output so the LLM's response conforms to the schema rather than free-form text. `to_job_postings()` then converts each `ExtractedJob` into an (unsaved) `JobPosting` model instance, flattening `salary_range` into flat columns, normalizing `url` to the job's description/detail page (not an "Apply" form URL), and attaching the `Company` FK, `source_url`, and `scraped_at`.
+Takes the fetched page text and produces a list of `ExtractedJob` (Pydantic — see [job-schema.md](./job-schema.md)). Defined behind an abstract interface (`LLMExtractor.extract(content: str) -> list[ExtractedJob]`) so the concrete provider is swappable via `LLM_PROVIDER`/`LLM_MODEL` env vars — Claude is the recommended default implementation, with Gemini also wired up. Uses structured JSON output so the LLM's response conforms to the schema rather than free-form text. `to_job_postings()` then converts each `ExtractedJob` into an (unsaved) `JobPosting` model instance, flattening `salary_range` into flat columns, normalizing `url` to the job's description/detail page (not an "Apply" form URL), and attaching the `Company` FK, `source_url`, and placeholder `first_scrape_timestamp`/`latest_scrape_timestamp` (both set to this run's fetch time — `save_job_postings()` below may override them). It also computes a content-derived `job_key` (company + url, or title+location fallback) for each job — the identity `save_job_postings()` uses to decide whether this job continues an existing lifetime, since that decision needs the DB access `to_job_postings()` itself doesn't have.
 
 **Storage**
-`save_job_postings()` diffs the run's `job_id`s against the immediately preceding run for that company to set each `JobPosting.is_new`, then bulk-inserts the rows into Postgres. `write_raw_html()` separately writes the raw fetched HTML to `data/<company_id>/raw/<timestamp>.html` as a filesystem debug artifact (not part of the structured job data).
+Rows aren't one-per-scrape snapshots — a `JobPosting` row represents one continuous *lifetime* of a posting (see [job-schema.md](./job-schema.md)). `save_job_postings()` looks up each incoming job's `job_key` against existing rows for that company: if the most recent one's `latest_scrape_timestamp` matches the immediately preceding run's timestamp, it's a continuation — that row is updated in place (all fields refreshed, `latest_scrape_timestamp` bumped, `first_scrape_timestamp` untouched). Otherwise — a `job_key` never seen before, or one reappearing after being absent from a scrape — it becomes a brand new row (its own auto `id`), so a reappearance is treated as a fresh posting rather than silently extending the old row's streak across the gap. `is_new` is derived (`first_scrape_timestamp == latest_scrape_timestamp`), not stored — see `JobPosting.is_new` in [job-schema.md](./job-schema.md). `write_raw_html()` separately writes the raw fetched HTML to `data/<company_id>/raw/<timestamp>.html` as a filesystem debug artifact (not part of the structured job data).
 
 **Pipeline**
-`app/pipeline.py`'s `run_scrape(company, *, notify=True) -> ScrapeResult` orchestrates Fetcher → Extractor → Storage → Notifier for one company. Shared by `POST /api/companies/{id}/scrape`, the initial scrape-on-create, and `POST /api/companies/scrape-all` (which passes `notify=False` per-company and sends one combined digest itself instead) — so the orchestration isn't duplicated per caller.
+`app/pipeline.py`'s `run_scrape(company, *, notify=True) -> ScrapeResult` orchestrates Fetcher → Extractor → Storage → Notifier for one company. Shared by `POST /api/companies/{id}/scrape`, the initial scrape-on-create, and `POST /api/companies/scrape-all` (which passes `notify=False` per-company and sends one combined digest itself instead) — so the orchestration isn't duplicated per caller. It also checks, before saving, whether this is the company's very first-ever scrape (`not company.job_postings.exists()`) and skips the per-scrape notification email in that case regardless of `notify` — otherwise every job found on a brand-new company would read as "new" (see Storage above) and immediately trigger an email.
 
 **API (Django Ninja)**
 `backend/src/app/api.py` defines the REST endpoints, mounted at `/api/` (`backend/src/app/urls.py`). All endpoints below require an authenticated session and are scoped to `request.user`'s own companies, except `POST /api/login`/`/api/logout` (`auth=None`):
@@ -79,11 +79,12 @@ Config Loader                                Company.objects.get(pk=...)
                           ▼
                  save_job_postings()
                           │
-                    (diffs against previous run to set is_new)
+       (continuing job_key -> update its row in place;
+        new/reappearing job_key -> insert a new-lifetime row)
                           ▼
-              Postgres: JobPosting (bulk insert)
+              Postgres: JobPosting (update or insert, per job)
                           │
-                          ├──────────────► notify_new_recommended_jobs() ──► email (if notify=True)
+                          ├──────────────► notify_new_recommended_jobs() ──► email (if notify=True and not company's first scrape)
                           ▼
               ScrapeResult response (POST /api/companies/{id}/scrape)
 ```
@@ -126,7 +127,7 @@ henry/
 │           ├── settings.py    # Django settings (DATABASE_URL, auth, email, OTel logging, INSTALLED_APPS=["app"])
 │           ├── urls.py        # mounts the Ninja API at /api/, Django admin at /admin/
 │           ├── wsgi.py / asgi.py  # standard Django entry points
-│           ├── models.py      # Company (owner FK), JobPosting (is_new), UserPreferences
+│           ├── models.py      # Company (owner FK), JobPosting (job_key lifetime tracking, is_new property), UserPreferences
 │           ├── migrations/    # Django migrations
 │           ├── config.py      # Config Loader (Pydantic, settings.yaml only)
 │           ├── fetcher.py     # Playwright-based Fetcher
@@ -136,7 +137,7 @@ henry/
 │           ├── matching.py    # is_recommended() — job vs. UserPreferences
 │           ├── notifications.py  # notify_new_recommended_jobs(), notify_all_recommended_jobs()
 │           ├── pipeline.py    # run_scrape() — Fetcher → Extractor → Storage → Notifier, shared by scrape/scrape-all
-│           ├── storage.py     # save_job_postings() (also sets is_new), write_raw_html()
+│           ├── storage.py     # save_job_postings() (per-job_key update-or-insert), write_raw_html()
 │           └── api.py         # REST endpoints
 └── frontend/
     ├── frontend-start.sh       # installs npm deps, starts the dev server

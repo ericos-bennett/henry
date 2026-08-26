@@ -144,11 +144,11 @@ def _annotate_recommended(request, jobs: list[JobPosting]) -> list[JobPosting]:
 @api.get("/companies/{company_id}/jobs", response=list[JobPostingOut])
 def list_company_jobs(request, company_id: str, latest_only: bool = False):
     company = get_object_or_404(Company, pk=company_id, owner=request.user)
-    qs = company.job_postings.all().order_by("-scraped_at")
+    qs = company.job_postings.all().order_by("-latest_scrape_timestamp")
     if latest_only:
         latest = qs.first()
         if latest is not None:
-            qs = qs.filter(scraped_at=latest.scraped_at)
+            qs = qs.filter(latest_scrape_timestamp=latest.latest_scrape_timestamp)
     return _annotate_recommended(request, list(qs))
 
 
@@ -159,7 +159,7 @@ def list_jobs(
     location: str | None = None,
     salary_min: float | None = None,
 ):
-    qs = JobPosting.objects.filter(source_company__owner=request.user).order_by("-scraped_at")
+    qs = JobPosting.objects.filter(source_company__owner=request.user).order_by("-latest_scrape_timestamp")
     if company_id:
         qs = qs.filter(source_company_id=company_id)
     if location:
