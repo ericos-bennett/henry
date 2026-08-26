@@ -19,12 +19,10 @@ export interface JobPosting {
   location: string | null
   department: string | null
   employment_type: string | null
-  description: string | null
   posted_date: string | null
   salary_min: number | null
   salary_max: number | null
   salary_currency: string | null
-  salary_raw: string | null
 }
 
 export interface ScrapeResult {

@@ -7,7 +7,6 @@ class SalaryRange(BaseModel):
     min: float | None = None
     max: float | None = None
     currency: str | None = None
-    raw: str | None = None
 
 
 class ExtractedJob(BaseModel):
@@ -25,5 +24,4 @@ class ExtractedJob(BaseModel):
     department: str | None = None
     employment_type: str | None = None
     salary_range: SalaryRange | None = None
-    description: str | None = None
     posted_date: str | None = None

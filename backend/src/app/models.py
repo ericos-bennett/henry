@@ -35,13 +35,11 @@ class JobPosting(models.Model):
     location = models.CharField(max_length=300, null=True, blank=True)
     department = models.CharField(max_length=300, null=True, blank=True)
     employment_type = models.CharField(max_length=100, null=True, blank=True)
-    description = models.TextField(null=True, blank=True)
     posted_date = models.CharField(max_length=100, null=True, blank=True)
 
     salary_min = models.FloatField(null=True, blank=True)
     salary_max = models.FloatField(null=True, blank=True)
     salary_currency = models.CharField(max_length=10, null=True, blank=True)
-    salary_raw = models.CharField(max_length=200, null=True, blank=True)
 
     class Meta:
         constraints = [

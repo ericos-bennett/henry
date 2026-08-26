@@ -153,12 +153,10 @@ def to_job_postings(
                 location=job.location,
                 department=job.department,
                 employment_type=job.employment_type,
-                description=job.description,
                 posted_date=job.posted_date,
                 salary_min=salary.min if salary else None,
                 salary_max=salary.max if salary else None,
                 salary_currency=salary.currency if salary else None,
-                salary_raw=salary.raw if salary else None,
             )
         )
     return postings

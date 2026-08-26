@@ -27,7 +27,7 @@ Goal: a working end-to-end pipeline for a small, hand-curated list of companies.
 - robots.txt compliance and configurable rate limiting/politeness between requests.
 - Retry/backoff and dead-letter handling for persistently failing companies.
 - Moving `POST /api/companies/{id}/scrape` off the request/response cycle (background task queue) so it doesn't block on Playwright + LLM latency. (`PATCH /api/companies/{id}` itself is done — see [architecture.md](./architecture.md).)
-- Optional: detail-page crawling for a fuller `description`, if listing-only extraction proves insufficient (see decision below).
+- Optional: detail-page crawling for a fuller job description, if listing-only extraction proves insufficient (see decision below) — the `description` column itself was removed as unused; reintroduce it if this is picked up.
 
 ## V3 — Usability
 
@@ -38,7 +38,7 @@ Goal: a working end-to-end pipeline for a small, hand-curated list of companies.
 
 ## Decisions
 
-- **Detail-page depth**: resolved for v1 — extraction works from the career page's listing view only (title/location/link/whatever summary is shown there). No per-job detail-page visits. Revisit in V2 if listing pages don't carry enough info (e.g. `description` ends up too sparse to be useful).
+- **Detail-page depth**: resolved for v1 — extraction works from the career page's listing view only (title/location/link/whatever summary is shown there). No per-job detail-page visits. The `description` column was removed as unused (nothing read it); revisit in V2 if listing pages don't carry enough info and detail-page crawling gets picked up.
 - **LLM cost**: not a v1 design constraint. This is a single-user, small-company-list project, so per-run token usage is low and not worth optimizing for yet. Revisit only if the company list or frequency grows significantly.
 - **`wait_selector`**: removed from the `Company` model. It required knowing a CSS selector for a page's rendered content, which isn't something a user can supply when first adding a company — it's only discoverable by inspecting the page (or hitting a failed/incomplete scrape) after the fact. The Fetcher relies solely on Playwright's network-idle wait for now; revisit as a per-company override in V2 if that proves insufficient for some pages.
 

@@ -2,7 +2,7 @@
 
 Every extracted job listing is persisted as a row in Postgres's `JobPosting` table (`backend/src/app/models.py`). This is the contract between the Extractor and the database (see [architecture.md](./architecture.md)).
 
-Since extraction is LLM-based across arbitrary company page layouts, quality and field availability vary by company — most fields beyond `title` are **best-effort and nullable**. The LLM itself returns a nested `salary_range` object (see `app.schema.ExtractedJob`/`SalaryRange`); the Extractor flattens it into four columns before the row is saved, since flat columns are what's queryable in SQL (e.g. `WHERE salary_min >= 100000`).
+Since extraction is LLM-based across arbitrary company page layouts, quality and field availability vary by company — most fields beyond `title` are **best-effort and nullable**. The LLM itself returns a nested `salary_range` object (see `app.schema.ExtractedJob`/`SalaryRange`); the Extractor flattens it into three columns before the row is saved, since flat columns are what's queryable in SQL (e.g. `WHERE salary_min >= 100000`).
 
 | Column | Type | Nullable | Description |
 |---|---|---|---|
@@ -16,8 +16,6 @@ Since extraction is LLM-based across arbitrary company page layouts, quality and
 | `salary_min` | float | yes | Best-effort parsed minimum salary. |
 | `salary_max` | float | yes | Best-effort parsed maximum salary. |
 | `salary_currency` | string | yes | e.g. "USD", if determinable. |
-| `salary_raw` | string | yes | Original salary text as posted (e.g. "$120K - $150K/yr") — postings phrase this inconsistently, so this is kept verbatim alongside the parsed fields. |
-| `description` | string | yes | Whatever summary/description text is present in the career page's listing view (v1 extracts listing-only, no detail-page visits — see [roadmap.md](./roadmap.md)). May be brief or absent depending on the company. |
 | `posted_date` | string | yes | Date the job was posted, as posted (not normalized to a real date type — companies phrase this inconsistently too). |
 | `source_company` | FK → `Company.id` | no | The company this posting came from. |
 | `source_url` | string | no | The career page URL that was scraped to find this posting. |
@@ -43,8 +41,6 @@ v1 is snapshot-only — there's no diffing/upsert logic yet (see [roadmap.md](./
   "salary_min": 120000,
   "salary_max": 150000,
   "salary_currency": "USD",
-  "salary_raw": "$120K - $150K/yr",
-  "description": "We're looking for a Senior Backend Engineer to...",
   "posted_date": "2026-08-14",
   "is_new": true
 }
@@ -60,4 +56,4 @@ Each user has at most one `UserPreferences` row (`backend/src/app/models.py`), m
 | `locations` | array of string | no (default `[]`) | Case-insensitive substring matches against a job's `location`. A job with no `location` at all is never disqualified by this — see matching note below. |
 | `keywords` | array of string | no (default `[]`) | Case-insensitive substring matches against a job's `title`. |
 
-With both lists empty, `is_recommended` is always `false` for that user — there's nothing to match against yet.
+Both `locations` and `keywords` must be non-empty for anything to be `is_recommended` — leaving either one unset means nothing is recommended, rather than matching on just the other.

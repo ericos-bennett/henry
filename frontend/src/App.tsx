@@ -15,6 +15,7 @@ const FREQUENCY_OPTIONS = [
   { label: 'Daily', value: '0 8 * * *' },
   { label: 'Weekly', value: '0 8 * * 0' },
 ]
+const DEFAULT_FREQUENCY = FREQUENCY_OPTIONS.find((o) => o.label === 'Daily')!.value
 
 function App() {
   const [user, setUser] = useState<User | null>(null)
@@ -37,7 +38,7 @@ function App() {
   const [newCompany, setNewCompany] = useState<NewCompany>({
     name: '',
     url: '',
-    frequency: FREQUENCY_OPTIONS[0].value,
+    frequency: DEFAULT_FREQUENCY,
   })
   const [formError, setFormError] = useState<string | null>(null)
 
@@ -233,6 +234,15 @@ function App() {
 
   const hasPreferences = preferences.locations.length > 0 || preferences.keywords.length > 0
 
+  // Most-frequent-first (FREQUENCY_OPTIONS is already in that order), then
+  // alphabetically by name within the same frequency.
+  const sortedCompanies = [...companies].sort((a, b) => {
+    const freqDiff =
+      FREQUENCY_OPTIONS.findIndex((o) => o.value === a.frequency) -
+      FREQUENCY_OPTIONS.findIndex((o) => o.value === b.frequency)
+    return freqDiff !== 0 ? freqDiff : a.name.localeCompare(b.name)
+  })
+
   const renderJobItem = (job: JobPosting) => (
     <li key={job.id}>
       {job.url ? (
@@ -261,7 +271,7 @@ function App() {
   if (!user) {
     return (
       <div className="page">
-        <h1>Career Scraper</h1>
+        <h1>Henry</h1>
         <h2>Sign in</h2>
         <form onSubmit={handleLogin} className="add-company-form">
           <input
@@ -287,7 +297,7 @@ function App() {
   return (
     <div className="page">
       <div className="company-row">
-        <h1>Career Scraper</h1>
+        <h1>Henry</h1>
         <div className="actions">
           <span className="muted">{user.username}</span>
           <button onClick={handleLogout}>Sign Out</button>
@@ -299,7 +309,7 @@ function App() {
       {scrapeMessage && <p className="scrape-message">{scrapeMessage}</p>}
 
       <ul className="companies">
-        {companies.map((company) => (
+        {sortedCompanies.map((company) => (
           <li key={company.id} className="company">
             <div className="company-row">
               <div>
