@@ -26,6 +26,21 @@ NOISE_SELECTORS = (
 # blocks on, which would otherwise time out the whole fetch outright.
 NETWORK_IDLE_GRACE_MS = 10_000
 
+# Playwright's default headless Chrome UA/viewport reads as a bot to some sites'
+# WAFs (e.g. Cloudflare); a realistic desktop Chrome fingerprint alone is enough
+# to get past that on non-adversarial career pages, without doing anything to
+# actively defeat CAPTCHA/challenge pages.
+USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+)
+VIEWPORT = {"width": 1440, "height": 900}
+
+# navigator.webdriver is the one signal Playwright sets that a real Chrome
+# install never does; clearing it removes the single most common automated
+# fingerprint check without touching anything else about the page.
+_HIDE_WEBDRIVER_SCRIPT = "Object.defineProperty(navigator, 'webdriver', { get: () => undefined });"
+
 
 @dataclass
 class FetchResult:
@@ -50,7 +65,9 @@ def fetch_company(company: Company, settings: PlaywrightSettings) -> FetchResult
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=settings.headless)
         try:
-            page = browser.new_page()
+            context = browser.new_context(user_agent=USER_AGENT, viewport=VIEWPORT, locale="en-US")
+            context.add_init_script(_HIDE_WEBDRIVER_SCRIPT)
+            page = context.new_page()
             page.goto(company.url, wait_until="load", timeout=settings.timeout_ms)
             try:
                 page.wait_for_load_state("networkidle", timeout=min(settings.timeout_ms, NETWORK_IDLE_GRACE_MS))
