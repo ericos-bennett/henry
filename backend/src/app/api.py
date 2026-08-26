@@ -78,6 +78,7 @@ def scrape_all_companies(request):
     if not request.user.is_staff:
         raise HttpError(403, "Admin access required")
 
+    logger.info("scrape-all requested by %s", request.user.username)
     companies = list(Company.objects.filter(owner=request.user))
     jobs_found = 0
     failed = 0
@@ -183,4 +184,5 @@ def update_preferences(request, payload: PreferencesIn):
 @api.post("/companies/{company_id}/scrape", response=ScrapeResult)
 def scrape_company(request, company_id: str):
     company = get_object_or_404(Company, pk=company_id, owner=request.user)
+    logger.info("scrape requested for %s by %s", company.id, request.user.username)
     return run_scrape(company)
