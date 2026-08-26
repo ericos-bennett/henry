@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
 
 from app.config import PlaywrightSettings
 from app.models import Company
+
+logger = logging.getLogger(__name__)
 
 # Generic layout chrome that isn't job content on any career page — safe to strip
 # unconditionally since there's no per-company selector config to fall back on.
@@ -15,6 +19,12 @@ NOISE_SELECTORS = (
     "nav, header, footer, "
     '[aria-hidden="true"], [role="navigation"], [role="banner"], [role="contentinfo"]'
 )
+
+# Some sites (chat widgets, analytics beacons) poll continuously and never go
+# fully network-idle, so idleness is only ever waited for on a best-effort basis
+# after the page has already loaded — never as the condition goto() itself
+# blocks on, which would otherwise time out the whole fetch outright.
+NETWORK_IDLE_GRACE_MS = 10_000
 
 
 @dataclass
@@ -41,7 +51,11 @@ def fetch_company(company: Company, settings: PlaywrightSettings) -> FetchResult
         browser = p.chromium.launch(headless=settings.headless)
         try:
             page = browser.new_page()
-            page.goto(company.url, wait_until="networkidle", timeout=settings.timeout_ms)
+            page.goto(company.url, wait_until="load", timeout=settings.timeout_ms)
+            try:
+                page.wait_for_load_state("networkidle", timeout=min(settings.timeout_ms, NETWORK_IDLE_GRACE_MS))
+            except PlaywrightTimeoutError:
+                logger.warning("networkidle not reached for %s, proceeding with loaded content", company.url)
             html = page.content()
             # Remove noise nodes before annotating links — no reason to annotate
             # hrefs inside nodes that are about to be deleted.
