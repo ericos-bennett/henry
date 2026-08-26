@@ -226,7 +226,7 @@ function App() {
     try {
       const created = await api.createCompany(newCompany)
       setCompanies((prev) => [...prev, created])
-      setNewCompany({ name: '', url: '', frequency: FREQUENCY_OPTIONS[0].value })
+      setNewCompany({ name: '', url: '', frequency: DEFAULT_FREQUENCY })
     } catch (e) {
       setFormError(String(e))
     }
