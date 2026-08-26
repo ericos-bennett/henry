@@ -83,6 +83,7 @@ class ScrapeResult(Schema):
     company_id: str
     jobs_found: int
     scraped_at: datetime
+    skipped: bool = False
 
 
 class ScrapeAllResult(Schema):

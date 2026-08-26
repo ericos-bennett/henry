@@ -30,6 +30,7 @@ export interface ScrapeResult {
   company_id: string
   jobs_found: number
   scraped_at: string
+  skipped: boolean
 }
 
 export interface ScrapeAllResult {

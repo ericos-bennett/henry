@@ -16,6 +16,10 @@ class Company(models.Model):
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="companies", null=True, blank=True
     )
+    # sha256 of the most recently fetched (post-trim) page text, used to skip
+    # re-extraction when a scrape finds the page unchanged. Null until a
+    # company's first successful scrape.
+    last_content_hash = models.CharField(max_length=64, null=True, blank=True)
 
     def __str__(self) -> str:
         return self.id

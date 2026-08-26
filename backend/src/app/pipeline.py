@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import logging
 
 from app.config import AppConfig, load_config
@@ -35,12 +36,25 @@ def run_scrape(company: Company, *, notify: bool = True) -> ScrapeResult:
     # company is added, rather than only genuinely new postings going forward.
     is_first_scrape = not company.job_postings.exists()
 
+    content_hash = hashlib.sha256(result.text.encode()).hexdigest()
+    if not is_first_scrape and content_hash == company.last_content_hash:
+        # Page text is byte-for-byte unchanged since the last successful scrape
+        # (post-trim, per fetch_company) — nothing new to extract or notify about.
+        jobs_found = _current_job_count(company)
+        logger.info("scraped %s: unchanged, skipped extraction (%d jobs)", company.id, jobs_found)
+        return ScrapeResult(
+            company_id=company.id, jobs_found=jobs_found, scraped_at=result.fetched_at, skipped=True
+        )
+
     try:
         extracted = extractor.extract(result.text)
     except Exception as e:
         raise ExtractionError(str(e)) from e
     jobs = to_job_postings(extracted, company=company, scraped_at=result.fetched_at)
     saved = save_job_postings(jobs)
+
+    company.last_content_hash = content_hash
+    company.save(update_fields=["last_content_hash"])
 
     if notify and not is_first_scrape:
         try:
@@ -49,4 +63,17 @@ def run_scrape(company: Company, *, notify: bool = True) -> ScrapeResult:
             logger.exception("failed to send notification email for %s", company.id)
 
     logger.info("scraped %s: %d jobs found", company.id, len(saved))
-    return ScrapeResult(company_id=company.id, jobs_found=len(saved), scraped_at=result.fetched_at)
+    return ScrapeResult(
+        company_id=company.id, jobs_found=len(saved), scraped_at=result.fetched_at, skipped=False
+    )
+
+
+def _current_job_count(company: Company) -> int:
+    """Number of jobs from the company's most recent scrape run, i.e. its
+    currently active listings — same "latest run" grouping used by
+    GET /companies/{id}/jobs?latest_only=true."""
+    qs = company.job_postings.all().order_by("-latest_scrape_timestamp")
+    latest = qs.first()
+    if latest is None:
+        return 0
+    return qs.filter(latest_scrape_timestamp=latest.latest_scrape_timestamp).count()
