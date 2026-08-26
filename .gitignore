@@ -2,6 +2,7 @@
 __pycache__/
 *.pyc
 data/
+otel-data/
 .env
 
 node_modules/
