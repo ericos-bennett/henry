@@ -9,7 +9,7 @@ from croniter import croniter
 from django.db import close_old_connections
 
 from app.models import Company
-from app.pipeline import run_scrape
+from app.pipeline import run_scrapes_concurrently
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -30,22 +30,22 @@ def tick(now: datetime | None = None) -> None:
     local_now = now.astimezone()
 
     close_old_connections()
+    due_companies = []
     for company in Company.objects.filter(enabled=True):
         try:
             due = croniter.match(company.frequency, local_now)
         except Exception:
             logger.exception("scheduler: invalid cron for %s: %r", company.id, company.frequency)
             continue
-        if not due:
-            continue
+        if due:
+            logger.info("scheduler: %s is due, scraping", company.id)
+            due_companies.append(company)
 
-        logger.info("scheduler: %s is due, scraping", company.id)
-        try:
-            run_scrape(company)
-        except Exception:
-            logger.exception("scheduler: scrape failed for %s", company.id)
-        finally:
-            close_old_connections()
+    for company, outcome in run_scrapes_concurrently(due_companies):
+        if isinstance(outcome, Exception):
+            logger.exception("scheduler: scrape failed for %s", company.id, exc_info=outcome)
+        else:
+            logger.info("scheduler: %s scraped, %d jobs found", company.id, outcome.jobs_found)
 
 
 def _seconds_until_next_hour(now: datetime | None = None) -> float:

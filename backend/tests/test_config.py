@@ -5,7 +5,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from app.config import LLMSettings
+from app.config import LLMSettings, PlaywrightSettings
 
 
 class LLMSettingsTest(unittest.TestCase):
@@ -32,3 +32,8 @@ class LLMSettingsTest(unittest.TestCase):
         self.assertEqual(settings.api_key_env, "LLM_API_KEY")
         with patch.dict("os.environ", {"LLM_API_KEY": "secret"}):
             self.assertEqual(settings.api_key, "secret")
+
+
+class PlaywrightSettingsTest(unittest.TestCase):
+    def test_max_concurrency_defaults_to_four(self):
+        self.assertEqual(PlaywrightSettings().max_concurrency, 4)

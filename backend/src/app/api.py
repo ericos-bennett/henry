@@ -14,7 +14,7 @@ from app.extractor import ExtractionError
 from app.matching import is_recommended
 from app.models import Company, JobPosting, UserPreferences
 from app.notifications import notify_all_recommended_jobs
-from app.pipeline import run_scrape
+from app.pipeline import run_scrape, run_scrapes_concurrently
 from app.schemas import (
     CompanyIn,
     CompanyOut,
@@ -81,13 +81,12 @@ def scrape_all_companies(request):
     companies = list(Company.objects.filter(owner=request.user))
     jobs_found = 0
     failed = 0
-    for company in companies:
-        try:
-            result = run_scrape(company, notify=False)
-            jobs_found += result.jobs_found
-        except Exception:
+    for company, outcome in run_scrapes_concurrently(companies, notify=False):
+        if isinstance(outcome, Exception):
             failed += 1
-            logger.exception("scrape failed for %s during scrape-all", company.id)
+            logger.exception("scrape failed for %s during scrape-all", company.id, exc_info=outcome)
+        else:
+            jobs_found += outcome.jobs_found
 
     try:
         notify_all_recommended_jobs(request.user)

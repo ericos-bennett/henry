@@ -34,6 +34,10 @@ class LLMSettings(BaseModel):
 class PlaywrightSettings(BaseModel):
     headless: bool = True
     timeout_ms: int = 30_000
+    # Caps simultaneous Chromium instances when scraping multiple companies at
+    # once (scrape-all, scheduler tick) — the LLM call for each company rides
+    # along in the same worker thread, so this also bounds concurrent LLM calls.
+    max_concurrency: int = 4
 
 
 class StorageSettings(BaseModel):

@@ -8,10 +8,13 @@ from unittest import mock
 
 from django.test import TestCase
 
+from django.utils import timezone as django_timezone
+
 from app.fetcher import FetchResult
 from app.models import Company, JobPosting
-from app.pipeline import run_scrape
+from app.pipeline import run_scrape, run_scrapes_concurrently
 from app.schema import ExtractedJob
+from app.schemas import ScrapeResult
 
 
 def fake_fetch(text: str, fetched_at: datetime) -> FetchResult:
@@ -106,3 +109,54 @@ class RunScrapeSkipTest(TestCase):
         run_scrape(self.company)
 
         mock_write_raw.assert_called_once()
+
+
+class RunScrapesConcurrentlyTest(TestCase):
+    def setUp(self):
+        self.acme = Company.objects.create(
+            id="acme", name="Acme", url="https://acme.example/jobs", frequency="0 * * * *"
+        )
+        self.globex = Company.objects.create(
+            id="globex", name="Globex", url="https://globex.example/jobs", frequency="0 * * * *"
+        )
+
+    @mock.patch("app.pipeline.run_scrape")
+    def test_returns_one_outcome_per_company_in_order(self, mock_run_scrape):
+        results_by_id = {
+            "acme": ScrapeResult(company_id="acme", jobs_found=3, scraped_at=django_timezone.now()),
+            "globex": ScrapeResult(company_id="globex", jobs_found=5, scraped_at=django_timezone.now()),
+        }
+        mock_run_scrape.side_effect = lambda company, **kwargs: results_by_id[company.id]
+
+        outcomes = run_scrapes_concurrently([self.acme, self.globex])
+
+        self.assertEqual([company.id for company, _ in outcomes], ["acme", "globex"])
+        self.assertEqual(outcomes[0][1], results_by_id["acme"])
+        self.assertEqual(outcomes[1][1], results_by_id["globex"])
+
+    @mock.patch("app.pipeline.run_scrape")
+    def test_one_failure_does_not_prevent_other_results(self, mock_run_scrape):
+        def fake(company, **kwargs):
+            if company.id == "acme":
+                raise RuntimeError("boom")
+            return ScrapeResult(company_id=company.id, jobs_found=5, scraped_at=django_timezone.now())
+
+        mock_run_scrape.side_effect = fake
+
+        outcomes = run_scrapes_concurrently([self.acme, self.globex])
+
+        outcomes_by_id = {company.id: outcome for company, outcome in outcomes}
+        self.assertIsInstance(outcomes_by_id["acme"], RuntimeError)
+        self.assertIsInstance(outcomes_by_id["globex"], ScrapeResult)
+        self.assertEqual(outcomes_by_id["globex"].jobs_found, 5)
+
+    @mock.patch("app.pipeline.run_scrape")
+    def test_notify_kwarg_passed_through(self, mock_run_scrape):
+        mock_run_scrape.return_value = ScrapeResult(
+            company_id="acme", jobs_found=0, scraped_at=django_timezone.now()
+        )
+
+        run_scrapes_concurrently([self.acme], notify=False)
+
+        for call in mock_run_scrape.call_args_list:
+            self.assertEqual(call.kwargs, {"notify": False})

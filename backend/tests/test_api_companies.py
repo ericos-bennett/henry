@@ -109,42 +109,55 @@ class ScrapeAllCompaniesTest(TestCase):
         self.assertEqual(response.status_code, 403)
 
     @mock.patch("app.api.notify_all_recommended_jobs")
-    @mock.patch("app.api.run_scrape")
-    def test_scrapes_every_owned_company_and_sends_one_digest(self, mock_run_scrape, mock_notify):
-        mock_run_scrape.side_effect = _fake_scrape_result({"acme": 3, "globex": 5})
+    @mock.patch("app.api.run_scrapes_concurrently")
+    def test_scrapes_every_owned_company_and_sends_one_digest(self, mock_run_scrapes, mock_notify):
+        results = _fake_scrape_result({"acme": 3, "globex": 5})
+        mock_run_scrapes.side_effect = lambda companies, **kwargs: [
+            (company, results(company)) for company in companies
+        ]
 
         response = self.client.post("/api/companies/scrape-all")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"companies_scraped": 2, "companies_failed": 0, "jobs_found": 8})
-        self.assertEqual(mock_run_scrape.call_count, 2)
-        for call in mock_run_scrape.call_args_list:
-            self.assertEqual(call.kwargs, {"notify": False})
+        mock_run_scrapes.assert_called_once()
+        called_companies, called_kwargs = mock_run_scrapes.call_args.args[0], mock_run_scrapes.call_args.kwargs
+        self.assertEqual({c.id for c in called_companies}, {"acme", "globex"})
+        self.assertEqual(called_kwargs, {"notify": False})
         mock_notify.assert_called_once_with(self.user)
 
     @mock.patch("app.api.notify_all_recommended_jobs")
-    def test_continues_past_individual_scrape_failures(self, mock_notify):
-        def fake(company, **kwargs):
-            if company.id == "acme":
-                raise RuntimeError("boom")
-            return ScrapeResult(company_id=company.id, jobs_found=5, scraped_at=timezone.now())
+    @mock.patch("app.api.run_scrapes_concurrently")
+    def test_continues_past_individual_scrape_failures(self, mock_run_scrapes, mock_notify):
+        def fake(companies, **kwargs):
+            outcomes = []
+            for company in companies:
+                if company.id == "acme":
+                    outcomes.append((company, RuntimeError("boom")))
+                else:
+                    outcomes.append((company, ScrapeResult(company_id=company.id, jobs_found=5, scraped_at=timezone.now())))
+            return outcomes
 
-        with mock.patch("app.api.run_scrape", side_effect=fake):
-            response = self.client.post("/api/companies/scrape-all")
+        mock_run_scrapes.side_effect = fake
+
+        response = self.client.post("/api/companies/scrape-all")
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"companies_scraped": 1, "companies_failed": 1, "jobs_found": 5})
         mock_notify.assert_called_once_with(self.user)
 
     @mock.patch("app.api.notify_all_recommended_jobs")
-    @mock.patch("app.api.run_scrape")
-    def test_only_scrapes_own_companies(self, mock_run_scrape, mock_notify):
+    @mock.patch("app.api.run_scrapes_concurrently")
+    def test_only_scrapes_own_companies(self, mock_run_scrapes, mock_notify):
         other = get_user_model().objects.create_user(username="bob", password="password123")
         Company.objects.create(id="other", name="Other", url="https://other.example/jobs", frequency="0 * * * *", owner=other)
-        mock_run_scrape.side_effect = _fake_scrape_result({"acme": 1, "globex": 1})
+        results = _fake_scrape_result({"acme": 1, "globex": 1})
+        mock_run_scrapes.side_effect = lambda companies, **kwargs: [
+            (company, results(company)) for company in companies
+        ]
 
         response = self.client.post("/api/companies/scrape-all")
 
         self.assertEqual(response.json()["companies_scraped"], 2)
-        scraped_ids = {call.args[0].id for call in mock_run_scrape.call_args_list}
+        scraped_ids = {c.id for c in mock_run_scrapes.call_args.args[0]}
         self.assertEqual(scraped_ids, {"acme", "globex"})

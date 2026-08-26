@@ -2,6 +2,7 @@ settings:
   playwright:
     headless: true
     timeout_ms: 30000
+    max_concurrency: 4
   storage:
     root: data/
   logging:

@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import logging
+from concurrent.futures import ThreadPoolExecutor
+
+from django.db import close_old_connections
 
 from app.config import AppConfig, load_config
 from app.extractor import ExtractionError, LLMExtractor, get_extractor, to_job_postings
@@ -66,6 +69,33 @@ def run_scrape(company: Company, *, notify: bool = True) -> ScrapeResult:
     return ScrapeResult(
         company_id=company.id, jobs_found=len(saved), scraped_at=result.fetched_at, skipped=False
     )
+
+
+def run_scrapes_concurrently(
+    companies: list[Company], *, notify: bool = True
+) -> list[tuple[Company, ScrapeResult | Exception]]:
+    """Run run_scrape(company, notify=notify) for each company in a bounded
+    thread pool (config.settings.playwright.max_concurrency workers) — one
+    Chromium instance + LLM call in flight per worker. Returns one
+    (company, result_or_exception) pair per input company, in input order,
+    regardless of which succeeded — callers own all logging/counting, since
+    the two call sites (scrape-all vs. scheduler tick) have different
+    semantics for that.
+    """
+
+    def _run_one(company: Company) -> ScrapeResult | Exception:
+        close_old_connections()
+        try:
+            return run_scrape(company, notify=notify)
+        except Exception as e:
+            return e
+        finally:
+            close_old_connections()
+
+    max_workers = min(len(companies), config.settings.playwright.max_concurrency) or 1
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        results = list(executor.map(_run_one, companies))
+    return list(zip(companies, results))
 
 
 def _current_job_count(company: Company) -> int:
