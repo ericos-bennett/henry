@@ -111,12 +111,42 @@ h1 {
 .add-company-form {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-end;
   gap: 0.5rem;
 }
 
 .add-company-form input {
   flex: 1 1 150px;
   padding: 0.4rem 0.6rem;
+  box-sizing: border-box;
+}
+
+.add-company-form select {
+  flex: 0 0 auto;
+  padding: 0.4rem 0.6rem;
+  box-sizing: border-box;
+}
+
+.add-company-form button {
+  padding: 0.4rem 0.6rem;
+  box-sizing: border-box;
+}
+
+.add-company-form .field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1 1 150px;
+}
+
+.add-company-form .field input {
+  flex: 1 1 auto;
+}
+
+.add-company-form .field span {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #555;
 }
 
 .scrape-all {

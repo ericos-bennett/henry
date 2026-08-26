@@ -35,17 +35,17 @@ TEST_COMPANIES = [
     {
         "name": "Uplight",
         "url": "https://jobs.jobvite.com/uplight/jobs",
-        "frequency": "0 * * * *",
+        "frequency": "0 */8 * * *",
     },
     {
         "name": "Voltus",
         "url": "https://www.voltus.co/jobs",
-        "frequency": "0 * * * *",
+        "frequency": "0 8 * * *",
     },
     {
         "name": "Development Seed",
         "url": "https://developmentseed.org/careers/",
-        "frequency": "0 * * * *",
+        "frequency": "0 8 * * 0",
     },
 ]
 
@@ -56,7 +56,9 @@ class SeedCompaniesTest(unittest.TestCase):
         self.assertIsNotNone(
             SEED_PASSWORD, "Set CAREER_SCRAPER_SEED_PASSWORD to that user's password"
         )
-        with httpx.Client(base_url=BASE_URL, timeout=10) as client:
+        # POST /api/companies runs a synchronous first scrape (Playwright fetch +
+        # LLM extraction) before responding, which routinely exceeds a short timeout.
+        with httpx.Client(base_url=BASE_URL, timeout=120) as client:
             login = client.post(
                 "/api/login", json={"username": SEED_USERNAME, "password": SEED_PASSWORD}
             )

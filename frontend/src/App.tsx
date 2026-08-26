@@ -365,7 +365,7 @@ function App() {
         ))}
       </ul>
 
-      <h2>Add a Company</h2>
+      <h2>Add Company</h2>
       <form onSubmit={addCompany} className="add-company-form">
         <input
           placeholder="Name"
@@ -395,16 +395,20 @@ function App() {
 
       <h2>Preferences</h2>
       <form onSubmit={savePreferences} className="add-company-form">
-        <input
-          placeholder="Preferred Locations (comma-separated)"
-          value={locationsInput}
-          onChange={(e) => setLocationsInput(e.target.value)}
-        />
-        <input
-          placeholder="Keywords (comma-separated)"
-          value={keywordsInput}
-          onChange={(e) => setKeywordsInput(e.target.value)}
-        />
+        <label className="field">
+          <span>Preferred Locations (comma-separated)</span>
+          <input
+            value={locationsInput}
+            onChange={(e) => setLocationsInput(e.target.value)}
+          />
+        </label>
+        <label className="field">
+          <span>Keywords (comma-separated)</span>
+          <input
+            value={keywordsInput}
+            onChange={(e) => setKeywordsInput(e.target.value)}
+          />
+        </label>
         <button type="submit" disabled={preferencesSaving}>
           {preferencesSaving ? 'Saving…' : 'Save'}
         </button>
