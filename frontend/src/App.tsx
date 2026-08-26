@@ -296,7 +296,7 @@ function App() {
 
   return (
     <div className="page">
-      <div className="company-row">
+      <div className="company-row page-header">
         <h1>Henry</h1>
         <div className="actions">
           <span className="muted">{user.username}</span>

@@ -41,6 +41,10 @@ h1 {
   flex-wrap: wrap;
 }
 
+.page-header {
+  align-items: center;
+}
+
 .actions {
   display: flex;
   align-items: center;
@@ -151,7 +155,6 @@ h1 {
 
 .scrape-all {
   margin-top: 2rem;
-  padding-top: 1.5rem;
   border-top: 1px solid #eee;
 }
 
