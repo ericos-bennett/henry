@@ -123,6 +123,8 @@ def update_company(request, company_id: str, payload: CompanyPatch):
         company.enabled = payload.enabled
     if payload.frequency is not None:
         company.frequency = payload.frequency
+    if payload.url is not None:
+        company.url = payload.url
     company.save()
     return company
 

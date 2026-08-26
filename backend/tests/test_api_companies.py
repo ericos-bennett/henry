@@ -58,6 +58,13 @@ class UpdateCompanyTest(TestCase):
         self.company.refresh_from_db()
         self.assertEqual(self.company.frequency, "0 * * * *")
 
+    def test_updates_url_only(self):
+        response = self.patch({"url": "https://acme.example/careers"})
+        self.assertEqual(response.status_code, 200)
+        self.company.refresh_from_db()
+        self.assertEqual(self.company.url, "https://acme.example/careers")
+        self.assertEqual(self.company.frequency, "0 * * * *")
+
 
 class CreateCompanyTest(TestCase):
     def setUp(self):

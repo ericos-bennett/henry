@@ -44,6 +44,7 @@ class CompanyIn(Schema):
 class CompanyPatch(Schema):
     enabled: bool | None = None
     frequency: str | None = None
+    url: str | None = None
 
     @field_validator("frequency")
     @classmethod

@@ -17,6 +17,10 @@ const FREQUENCY_OPTIONS = [
 ]
 const DEFAULT_FREQUENCY = FREQUENCY_OPTIONS.find((o) => o.label === 'Daily')!.value
 
+function frequencyLabel(frequency: string): string {
+  return FREQUENCY_OPTIONS.find((o) => o.value === frequency)?.label ?? frequency
+}
+
 function App() {
   const [user, setUser] = useState<User | null>(null)
   const [authChecked, setAuthChecked] = useState(false)
@@ -51,6 +55,11 @@ function App() {
 
   const [scrapingAll, setScrapingAll] = useState(false)
   const [scrapeAllMessage, setScrapeAllMessage] = useState<string | null>(null)
+
+  const [editingCompany, setEditingCompany] = useState<Company | null>(null)
+  const [editUrl, setEditUrl] = useState('')
+  const [editUrlSaving, setEditUrlSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
 
   const loadCompanies = () => {
     setLoading(true)
@@ -147,6 +156,7 @@ function App() {
     try {
       const updated = await api.setCompanyFrequency(company.id, frequency)
       setCompanies((prev) => prev.map((c) => (c.id === company.id ? updated : c)))
+      setEditingCompany((prev) => (prev?.id === company.id ? updated : prev))
     } catch (e) {
       setError(String(e))
     }
@@ -156,6 +166,7 @@ function App() {
     try {
       const updated = await api.setCompanyEnabled(company.id, !company.enabled)
       setCompanies((prev) => prev.map((c) => (c.id === company.id ? updated : c)))
+      setEditingCompany((prev) => (prev?.id === company.id ? updated : prev))
     } catch (e) {
       setError(String(e))
     }
@@ -165,8 +176,33 @@ function App() {
     try {
       await api.deleteCompany(id)
       setCompanies((prev) => prev.filter((c) => c.id !== id))
+      setEditingCompany((prev) => (prev?.id === id ? null : prev))
     } catch (e) {
       setError(String(e))
+    }
+  }
+
+  const openEdit = (company: Company) => {
+    setEditingCompany(company)
+    setEditUrl(company.url)
+    setEditError(null)
+  }
+
+  const closeEdit = () => setEditingCompany(null)
+
+  const saveEditUrl = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingCompany) return
+    setEditError(null)
+    setEditUrlSaving(true)
+    try {
+      const updated = await api.setCompanyUrl(editingCompany.id, editUrl)
+      setCompanies((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
+      setEditingCompany(updated)
+    } catch (e) {
+      setEditError(String(e))
+    } finally {
+      setEditUrlSaving(false)
     }
   }
 
@@ -318,23 +354,8 @@ function App() {
             <div className="company-row">
               <div>
                 <strong>{company.name}</strong>
-                <div className="muted small">
-                  <a href={company.url} target="_blank" rel="noreferrer">
-                    {company.url}
-                  </a>{' '}
-                  ·{' '}
-                  <select
-                    className="frequency-select"
-                    value={company.frequency}
-                    onChange={(e) => changeFrequency(company, e.target.value)}
-                  >
-                    {FREQUENCY_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <span className="muted"> · {frequencyLabel(company.frequency)}</span>
+                {!company.enabled && <span className="badge-disabled">Disabled</span>}
               </div>
               <div className="actions">
                 <button onClick={() => scrape(company.id)} disabled={scrapingId === company.id}>
@@ -343,12 +364,7 @@ function App() {
                 <button onClick={() => toggleJobs(company.id)}>
                   {expandedId === company.id ? 'Hide jobs' : 'View Jobs'}
                 </button>
-                <button onClick={() => toggleEnabled(company)}>
-                  {company.enabled ? 'Disable' : 'Enable'}
-                </button>
-                <button onClick={() => removeCompany(company.id)} className="danger">
-                  Delete
-                </button>
+                <button onClick={() => openEdit(company)}>Edit</button>
               </div>
             </div>
 
@@ -378,6 +394,55 @@ function App() {
           </li>
         ))}
       </ul>
+
+      {editingCompany && (
+        <div className="modal-overlay" onClick={closeEdit}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Edit {editingCompany.name}</h3>
+
+            <form onSubmit={saveEditUrl} className="add-company-form">
+              <input
+                placeholder="Career Page URL"
+                value={editUrl}
+                onChange={(e) => setEditUrl(e.target.value)}
+                required
+              />
+              <button type="submit" disabled={editUrlSaving}>
+                {editUrlSaving ? 'Saving…' : 'Save URL'}
+              </button>
+            </form>
+
+            <label className="field schedule-field">
+              <span>Schedule</span>
+              <select
+                className="frequency-select"
+                value={editingCompany.frequency}
+                onChange={(e) => changeFrequency(editingCompany, e.target.value)}
+              >
+                {FREQUENCY_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {editError && <p className="error">{editError}</p>}
+
+            <div className="actions modal-footer">
+              <button onClick={() => toggleEnabled(editingCompany)}>
+                {editingCompany.enabled ? 'Disable' : 'Enable'}
+              </button>
+              <button onClick={() => removeCompany(editingCompany.id)} className="danger">
+                Delete
+              </button>
+              <button onClick={closeEdit} className="modal-close">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <h2>Add Company</h2>
       <form onSubmit={addCompany} className="add-company-form">

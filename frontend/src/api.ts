@@ -116,6 +116,12 @@ export const api = {
       body: JSON.stringify({ frequency }),
     }),
 
+  setCompanyUrl: (id: string, url: string) =>
+    request<Company>(`/api/companies/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ url }),
+    }),
+
   deleteCompany: (id: string) =>
     request<{ success: boolean }>(`/api/companies/${id}`, { method: 'DELETE' }),
 
