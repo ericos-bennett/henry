@@ -52,27 +52,33 @@ settings:
 
 ## The `Company` model (Postgres)
 
-Each tracked career page is a row in the `Company` table (see `backend/src/app/models.py`):
+Each tracked career page is a row in the `Company` table (see `backend/src/app/models.py`), owned by exactly one user:
 
 | Field | Type | Description |
 |---|---|---|
-| `id` | string (PK) | Unique slug for the company (e.g. `"acme-corp"`). |
+| `id` | string (PK) | Unique slug for the company (e.g. `"acme-corp"`), derived from `name` on creation via the API. |
 | `name` | string | Human-readable name, for logs/output. |
 | `url` | string | Career page URL to scrape. |
-| `frequency` | string | Cron expression (e.g. `"0 */6 * * *"` for every 6 hours). |
+| `frequency` | string | Cron expression, restricted to a fixed allowed set kept in sync with the frontend's dropdown (see [architecture.md](./architecture.md)) — arbitrary cron expressions are rejected. |
 | `enabled` | boolean | Set `false` to keep a company around but skip scheduling it (default `true`). |
+| `owner` | FK → `User.id` | The user this company belongs to; all API access is scoped to `owner == request.user`. Nullable only so pre-existing rows created before multi-user auth was added aren't broken. |
 
 Companies can be added/edited either via SQL directly against the local Postgres database:
 
 ```sql
-INSERT INTO app_company (id, name, url, frequency, enabled)
-VALUES ('acme-corp', 'Acme Corp', 'https://acme.example.com/careers', '0 */6 * * *', true);
+INSERT INTO app_company (id, name, url, frequency, enabled, owner_id)
+VALUES ('acme-corp', 'Acme Corp', 'https://acme.example.com/careers', '0 */6 * * *', true, 1);
 ```
 
-...or via the REST API (see [architecture.md](./architecture.md) for the full endpoint list):
+...or via the REST API (see [architecture.md](./architecture.md) for the full endpoint list), authenticated as the owning user:
 
 ```sh
 curl -X POST http://127.0.0.1:8000/api/companies \
+  -b cookies.txt \
   -H "Content-Type: application/json" \
-  -d '{"id": "acme-corp", "name": "Acme Corp", "url": "https://acme.example.com/careers", "frequency": "0 */6 * * *"}'
+  -d '{"name": "Acme Corp", "url": "https://acme.example.com/careers", "frequency": "0 */6 * * *"}'
 ```
+
+## Auth & user accounts
+
+There's no self-serve signup — user accounts are created via Django's admin site (`http://127.0.0.1:8000/admin/`, requires a superuser created with `manage.py createsuperuser`). The REST API itself uses Django's session-cookie auth (`POST /api/login` with `{username, password}`, then subsequent requests carry the session cookie). A user's `is_staff` flag (also set via `/admin/`) gates admin-only API actions — currently just `POST /api/companies/scrape-all` (see [architecture.md](./architecture.md)).

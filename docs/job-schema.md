@@ -6,9 +6,10 @@ Since extraction is LLM-based across arbitrary company page layouts, quality and
 
 | Column | Type | Nullable | Description |
 |---|---|---|---|
-| `job_id` | string | no | Stable identifier for this posting, derived from `source_company_id` + `url` (or title, if no per-job URL exists). Unique together with `scraped_at` — see note below. |
+| `job_id` | string | no | Stable identifier for this posting, derived from `source_company_id` + `url` (or title + location, if no per-job URL exists). Unique together with `scraped_at` — see note below. |
+| `is_new` | boolean | no (default `false`) | Whether this `job_id` was absent from the immediately preceding scrape of this company. Set by `save_job_postings()` at write time (`app/storage.py`); `false` on a company's very first scrape (nothing to diff against). Drives the new-job notification email — see [architecture.md](./architecture.md). |
 | `title` | string | no | Job title as posted. |
-| `url` | string | yes | Direct link to the job posting, if the page provides one. |
+| `url` | string | yes | Direct link to the job's description/detail page, if the page provides one — normalized away from an "Apply"-form URL when the two differ. |
 | `location` | string | yes | Location as posted (city/remote/etc.), free text. |
 | `department` | string | yes | Team/department, if listed. |
 | `employment_type` | string | yes | e.g. "Full-time", "Contract", if listed. |
@@ -44,6 +45,19 @@ v1 is snapshot-only — there's no diffing/upsert logic yet (see [roadmap.md](./
   "salary_currency": "USD",
   "salary_raw": "$120K - $150K/yr",
   "description": "We're looking for a Senior Backend Engineer to...",
-  "posted_date": "2026-08-14"
+  "posted_date": "2026-08-14",
+  "is_new": true
 }
 ```
+
+## `UserPreferences`
+
+Each user has at most one `UserPreferences` row (`backend/src/app/models.py`), managed via `GET`/`PUT /api/preferences` — not extracted or written by the scrape pipeline itself. It drives job matching (`app/matching.py`'s `is_recommended()`), which powers both the `is_recommended` field on `JobPostingOut` (API-only — computed per request, not a database column) and the recommended-jobs filter used by notification emails (see [architecture.md](./architecture.md)).
+
+| Column | Type | Nullable | Description |
+|---|---|---|---|
+| `owner` | FK → `User.id` (one-to-one) | no | The user these preferences belong to. |
+| `locations` | array of string | no (default `[]`) | Case-insensitive substring matches against a job's `location`. A job with no `location` at all is never disqualified by this — see matching note below. |
+| `keywords` | array of string | no (default `[]`) | Case-insensitive substring matches against a job's `title`. |
+
+With both lists empty, `is_recommended` is always `false` for that user — there's nothing to match against yet.
