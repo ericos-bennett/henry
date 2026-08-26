@@ -41,6 +41,7 @@ function App() {
     frequency: DEFAULT_FREQUENCY,
   })
   const [formError, setFormError] = useState<string | null>(null)
+  const [addingCompany, setAddingCompany] = useState(false)
 
   const [preferences, setPreferences] = useState<Preferences>({ locations: [], keywords: [] })
   const [locationsInput, setLocationsInput] = useState('')
@@ -223,12 +224,15 @@ function App() {
   const addCompany = async (e: React.FormEvent) => {
     e.preventDefault()
     setFormError(null)
+    setAddingCompany(true)
     try {
       const created = await api.createCompany(newCompany)
       setCompanies((prev) => [...prev, created])
       setNewCompany({ name: '', url: '', frequency: DEFAULT_FREQUENCY })
     } catch (e) {
       setFormError(String(e))
+    } finally {
+      setAddingCompany(false)
     }
   }
 
@@ -399,7 +403,9 @@ function App() {
             </option>
           ))}
         </select>
-        <button type="submit">Add</button>
+        <button type="submit" disabled={addingCompany}>
+          {addingCompany ? 'Adding…' : 'Add'}
+        </button>
       </form>
       {formError && <p className="error">{formError}</p>}
 
