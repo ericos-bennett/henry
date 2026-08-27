@@ -90,6 +90,54 @@ class CreateCompanyTest(TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertTrue(Company.objects.filter(id="acme").exists())
 
+    @mock.patch("app.api.run_scrape")
+    def test_does_not_scrape_immediately_if_created_disabled(self, mock_run_scrape):
+        body = {
+            "name": "Acme",
+            "url": "https://acme.example/jobs",
+            "frequency": "0 * * * *",
+            "enabled": False,
+        }
+        response = self.client.post("/api/companies", data=json.dumps(body), content_type="application/json")
+
+        self.assertEqual(response.status_code, 201)
+        mock_run_scrape.assert_not_called()
+
+
+class ScrapeCompanyTest(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="alice", password="password123")
+        self.client.force_login(self.user)
+        self.company = Company.objects.create(
+            id="acme",
+            name="Acme",
+            url="https://acme.example/jobs",
+            frequency="0 * * * *",
+            enabled=True,
+            owner=self.user,
+        )
+
+    @mock.patch("app.api.run_scrape")
+    def test_scrapes_enabled_company(self, mock_run_scrape):
+        mock_run_scrape.return_value = ScrapeResult(
+            company_id="acme", jobs_found=1, scraped_at=timezone.now()
+        )
+
+        response = self.client.post(f"/api/companies/{self.company.id}/scrape")
+
+        self.assertEqual(response.status_code, 200)
+        mock_run_scrape.assert_called_once_with(self.company)
+
+    @mock.patch("app.api.run_scrape")
+    def test_rejects_scraping_a_disabled_company(self, mock_run_scrape):
+        self.company.enabled = False
+        self.company.save()
+
+        response = self.client.post(f"/api/companies/{self.company.id}/scrape")
+
+        self.assertEqual(response.status_code, 400)
+        mock_run_scrape.assert_not_called()
+
 
 def _fake_scrape_result(counts: dict[str, int]):
     def fake(company, **kwargs):
@@ -168,3 +216,17 @@ class ScrapeAllCompaniesTest(TestCase):
         self.assertEqual(response.json()["companies_scraped"], 2)
         scraped_ids = {c.id for c in mock_run_scrapes.call_args.args[0]}
         self.assertEqual(scraped_ids, {"acme", "globex"})
+
+    @mock.patch("app.api.notify_all_recommended_jobs")
+    @mock.patch("app.api.run_scrapes_concurrently")
+    def test_excludes_disabled_companies(self, mock_run_scrapes, mock_notify):
+        Company.objects.filter(id="globex").update(enabled=False)
+        mock_run_scrapes.return_value = [
+            (Company.objects.get(id="acme"), ScrapeResult(company_id="acme", jobs_found=1, scraped_at=timezone.now()))
+        ]
+
+        response = self.client.post("/api/companies/scrape-all")
+
+        self.assertEqual(response.status_code, 200)
+        scraped_ids = {c.id for c in mock_run_scrapes.call_args.args[0]}
+        self.assertEqual(scraped_ids, {"acme"})

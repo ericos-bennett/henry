@@ -276,9 +276,12 @@ function App() {
 
   const hasPreferences = preferences.locations.length > 0 || preferences.keywords.length > 0
 
-  // Most-frequent-first (FREQUENCY_OPTIONS is already in that order), then
-  // alphabetically by name within the same frequency.
+  // Disabled companies last, then most-frequent-first (FREQUENCY_OPTIONS is
+  // already in that order), then alphabetically by name within the same
+  // frequency.
   const sortedCompanies = [...companies].sort((a, b) => {
+    const enabledDiff = Number(b.enabled) - Number(a.enabled)
+    if (enabledDiff !== 0) return enabledDiff
     const freqDiff =
       FREQUENCY_OPTIONS.findIndex((o) => o.value === a.frequency) -
       FREQUENCY_OPTIONS.findIndex((o) => o.value === b.frequency)
@@ -313,8 +316,7 @@ function App() {
   if (!user) {
     return (
       <div className="page">
-        <h1>Henry</h1>
-        <h2>Sign in</h2>
+        <h1 className="signin-title">Henry</h1>
         <form onSubmit={handleLogin} className="add-company-form">
           <input
             placeholder="username"
@@ -352,7 +354,7 @@ function App() {
 
       <ul className="companies">
         {sortedCompanies.map((company) => (
-          <li key={company.id} className="company">
+          <li key={company.id} className={company.enabled ? 'company' : 'company company-disabled'}>
             <div className="company-row">
               <div>
                 <strong>{company.name}</strong>
@@ -360,7 +362,11 @@ function App() {
                 {!company.enabled && <span className="badge-disabled">Disabled</span>}
               </div>
               <div className="actions">
-                <button onClick={() => scrape(company.id)} disabled={scrapingId === company.id}>
+                <button
+                  onClick={() => scrape(company.id)}
+                  disabled={scrapingId === company.id || !company.enabled}
+                  title={company.enabled ? undefined : 'Enable this company to scrape it'}
+                >
                   {scrapingId === company.id ? 'Scraping…' : 'Scrape'}
                 </button>
                 <button onClick={() => toggleJobs(company.id)}>

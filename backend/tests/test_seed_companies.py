@@ -46,6 +46,7 @@ TEST_COMPANIES = [
         "name": "Development Seed",
         "url": "https://developmentseed.org/careers/",
         "frequency": "0 8 * * 0",
+        "enabled": False,
     },
 ]
 

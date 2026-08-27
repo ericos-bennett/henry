@@ -79,7 +79,7 @@ def scrape_all_companies(request):
         raise HttpError(403, "Admin access required")
 
     logger.info("scrape-all requested by %s", request.user.username)
-    companies = list(Company.objects.filter(owner=request.user))
+    companies = list(Company.objects.filter(owner=request.user, enabled=True))
     jobs_found = 0
     failed = 0
     for company, outcome in run_scrapes_concurrently(companies, notify=False):
@@ -107,12 +107,13 @@ def get_company(request, company_id: str):
 @api.post("/companies", response={201: CompanyOut})
 def create_company(request, payload: CompanyIn):
     company = Company.objects.create(id=slugify(payload.name), owner=request.user, **payload.dict())
-    try:
-        run_scrape(company)
-    except Exception:
-        # The company is created either way — a failed first scrape can be retried
-        # via the "Scrape" button, same as any other scrape failure.
-        logger.exception("initial scrape failed for %s", company.id)
+    if company.enabled:
+        try:
+            run_scrape(company)
+        except Exception:
+            # The company is created either way — a failed first scrape can be retried
+            # via the "Scrape" button, same as any other scrape failure.
+            logger.exception("initial scrape failed for %s", company.id)
     return 201, company
 
 
@@ -186,5 +187,7 @@ def update_preferences(request, payload: PreferencesIn):
 @api.post("/companies/{company_id}/scrape", response=ScrapeResult)
 def scrape_company(request, company_id: str):
     company = get_object_or_404(Company, pk=company_id, owner=request.user)
+    if not company.enabled:
+        raise HttpError(400, "Company is disabled")
     logger.info("scrape requested for %s by %s", company.id, request.user.username)
     return run_scrape(company)
