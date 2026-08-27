@@ -35,7 +35,6 @@ class JobPosting(models.Model):
     source_company = models.ForeignKey(
         Company, on_delete=models.CASCADE, related_name="job_postings"
     )
-    source_url = models.URLField(max_length=500)
     first_scrape_timestamp = models.DateTimeField()
     latest_scrape_timestamp = models.DateTimeField()
 

@@ -146,7 +146,6 @@ def to_job_postings(
             JobPosting(
                 job_key=job_key,
                 source_company=company,
-                source_url=company.url,
                 first_scrape_timestamp=scraped_at,
                 latest_scrape_timestamp=scraped_at,
                 title=job.title,

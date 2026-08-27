@@ -17,7 +17,7 @@ SCRAPED_AT = datetime(2026, 8, 24, tzinfo=timezone.utc)
 def make_job(company: Company, title: str, *, is_new: bool, location: str | None = None) -> JobPosting:
     first = SCRAPED_AT if is_new else SCRAPED_AT - timedelta(days=1)
     return JobPosting(
-        job_key=title, source_company=company, source_url=company.url,
+        job_key=title, source_company=company,
         first_scrape_timestamp=first, latest_scrape_timestamp=SCRAPED_AT,
         title=title, location=location,
     )
@@ -117,7 +117,6 @@ class NotifyAllRecommendedJobsTest(TestCase):
         return JobPosting.objects.create(
             job_key=f"{company.id}:{title}",
             source_company=company,
-            source_url=company.url,
             first_scrape_timestamp=first_scraped_at or scraped_at,
             latest_scrape_timestamp=scraped_at,
             title=title,

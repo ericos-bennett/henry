@@ -14,7 +14,6 @@ def make_job(company: Company, job_key: str, scraped_at: datetime, **overrides) 
     fields = dict(
         job_key=job_key,
         source_company=company,
-        source_url=company.url,
         first_scrape_timestamp=scraped_at,
         latest_scrape_timestamp=scraped_at,
         title=f"Job {job_key}",

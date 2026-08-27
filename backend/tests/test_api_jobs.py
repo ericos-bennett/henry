@@ -20,12 +20,12 @@ class JobRecommendationTest(TestCase):
         )
         scraped_at = datetime(2026, 8, 24, tzinfo=timezone.utc)
         JobPosting.objects.create(
-            job_key="a", source_company=self.company, source_url=self.company.url,
+            job_key="a", source_company=self.company,
             first_scrape_timestamp=scraped_at, latest_scrape_timestamp=scraped_at,
             title="Software Engineer", location="Tokyo, Japan",
         )
         JobPosting.objects.create(
-            job_key="b", source_company=self.company, source_url=self.company.url,
+            job_key="b", source_company=self.company,
             first_scrape_timestamp=scraped_at, latest_scrape_timestamp=scraped_at,
             title="Product Designer", location="Tokyo, Japan",
         )

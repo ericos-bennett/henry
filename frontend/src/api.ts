@@ -10,7 +10,6 @@ export interface JobPosting {
   id: number
   job_key: string
   source_company: string
-  source_url: string
   first_scrape_timestamp: string
   latest_scrape_timestamp: string
   is_new: boolean
