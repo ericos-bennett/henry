@@ -23,7 +23,7 @@ Goal: a working end-to-end pipeline for a small, hand-curated list of companies.
 
 - **Scheduler**: run each company's scrape automatically on its configured `frequency`, instead of only on demand via `POST /api/companies/{id}/scrape` (or the staff-only `scrape-all`).
 - **Diffing/change detection**: each `JobPosting` row now tracks its own lifetime (`first_scrape_timestamp`/`latest_scrape_timestamp`, `is_new`), and a reappearance after a gap gets its own row — but there's still no query/report surfacing that history (e.g. "jobs removed since last week", "how long has this posting been up").
-- Pagination / infinite-scroll support in the Fetcher, driven by per-company config hints.
+- ~~Pagination / infinite-scroll support in the Fetcher~~ — done, but as a generic heuristic (next-page/load-more selector set + infinite scroll, capped at `playwright.max_pages`), not per-company config hints. Add per-company overrides only if the heuristic misses real pages.
 - Per-company fetch customization (e.g. a wait-for-selector override, custom headers, cookies/auth) if network-idle alone proves insufficient for some pages — dropped from v1's `Company` model since it's not something a user can supply upfront without inspecting the page first (see [Decisions](#decisions)).
 - robots.txt compliance and configurable rate limiting/politeness between requests.
 - Retry/backoff and dead-letter handling for persistently failing companies.

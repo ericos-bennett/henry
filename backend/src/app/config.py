@@ -38,6 +38,10 @@ class PlaywrightSettings(BaseModel):
     # once (scrape-all, scheduler tick) — the LLM call for each company rides
     # along in the same worker thread, so this also bounds concurrent LLM calls.
     max_concurrency: int = 4
+    # Upper bound on "next page" / "load more" / infinite-scroll steps the fetcher
+    # follows past the first screen of results. A safety cap, not a target — the
+    # fetcher stops as soon as a step yields nothing new.
+    max_pages: int = 20
 
 
 class StorageSettings(BaseModel):

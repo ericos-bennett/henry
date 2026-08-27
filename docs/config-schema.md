@@ -10,7 +10,9 @@ Global options for the app:
 |---|---|---|---|
 | `llm.api_key_env` | string | no (default `"LLM_API_KEY"`) | Name of the environment variable holding the provider's API key (the key itself is never stored in this file). |
 | `playwright.headless` | boolean | no (default `true`) | Whether to run the browser headless. |
-| `playwright.timeout_ms` | number | no (default e.g. `30000`) | Navigation/wait timeout per page. |
+| `playwright.timeout_ms` | number | no (default `30000`) | Navigation/wait timeout per page. |
+| `playwright.max_concurrency` | number | no (default `4`) | Cap on simultaneous Chromium instances when scraping multiple companies at once (scrape-all, scheduler tick). The per-company LLM call rides in the same worker thread, so this also bounds concurrent LLM calls. |
+| `playwright.max_pages` | number | no (default `20`) | Safety cap on "next page" / "load more" / infinite-scroll steps the fetcher follows past the first screen of results. The fetcher stops early as soon as a step yields nothing new. |
 | `storage.root` | string | no (default `"data/"`) | Root directory for raw HTML debug dumps (job postings themselves go to Postgres, not this directory). |
 | `logging.level` | string | no (default `"info"`) | Log verbosity. |
 
@@ -44,6 +46,8 @@ settings:
   playwright:
     headless: true
     timeout_ms: 30000
+    max_concurrency: 4
+    max_pages: 20
   storage:
     root: data/
   logging:
