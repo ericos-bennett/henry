@@ -43,6 +43,7 @@ h1 {
 
 .page-header {
   align-items: center;
+  margin-bottom: 2rem;
 }
 
 .actions {
@@ -196,6 +197,10 @@ h1 {
 
 .modal h3 {
   margin: 0;
+}
+
+.modal-wide {
+  max-width: 640px;
 }
 
 .modal-footer {

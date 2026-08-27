@@ -56,6 +56,8 @@ function App() {
   const [scrapingAll, setScrapingAll] = useState(false)
   const [scrapeAllMessage, setScrapeAllMessage] = useState<string | null>(null)
 
+  const [settingsOpen, setSettingsOpen] = useState(false)
+
   const [editingCompany, setEditingCompany] = useState<Company | null>(null)
   const [editUrl, setEditUrl] = useState('')
   const [editUrlSaving, setEditUrlSaving] = useState(false)
@@ -339,7 +341,7 @@ function App() {
       <div className="company-row page-header">
         <h1>Henry</h1>
         <div className="actions">
-          <span className="muted">{user.username}</span>
+          <button onClick={() => setSettingsOpen(true)}>Settings</button>
           <button onClick={handleLogout}>Sign Out</button>
         </div>
       </div>
@@ -474,35 +476,47 @@ function App() {
       </form>
       {formError && <p className="error">{formError}</p>}
 
-      <h2>Preferences</h2>
-      <form onSubmit={savePreferences} className="add-company-form">
-        <label className="field">
-          <span>Preferred Locations (comma-separated)</span>
-          <input
-            value={locationsInput}
-            onChange={(e) => setLocationsInput(e.target.value)}
-          />
-        </label>
-        <label className="field">
-          <span>Keywords (comma-separated)</span>
-          <input
-            value={keywordsInput}
-            onChange={(e) => setKeywordsInput(e.target.value)}
-          />
-        </label>
-        <button type="submit" disabled={preferencesSaving}>
-          {preferencesSaving ? 'Saving…' : 'Save'}
-        </button>
-      </form>
-      {preferencesError && <p className="error">{preferencesError}</p>}
+      {settingsOpen && (
+        <div className="modal-overlay" onClick={() => setSettingsOpen(false)}>
+          <div className="modal modal-wide" onClick={(e) => e.stopPropagation()}>
+            <h2>Preferences</h2>
+            <form onSubmit={savePreferences} className="add-company-form">
+              <label className="field">
+                <span>Locations (comma-separated)</span>
+                <input
+                  value={locationsInput}
+                  onChange={(e) => setLocationsInput(e.target.value)}
+                />
+              </label>
+              <label className="field">
+                <span>Keywords (comma-separated)</span>
+                <input
+                  value={keywordsInput}
+                  onChange={(e) => setKeywordsInput(e.target.value)}
+                />
+              </label>
+              <button type="submit" disabled={preferencesSaving}>
+                {preferencesSaving ? 'Saving…' : 'Save'}
+              </button>
+            </form>
+            {preferencesError && <p className="error">{preferencesError}</p>}
 
-      {user.is_staff && (
-        <div className="scrape-all">
-          <h2>Admin</h2>
-          <button onClick={scrapeAll} disabled={scrapingAll}>
-            {scrapingAll ? 'Scraping All…' : 'Scrape All & Email Recommended Jobs'}
-          </button>
-          {scrapeAllMessage && <p className="scrape-message">{scrapeAllMessage}</p>}
+            {user.is_staff && (
+              <div className="scrape-all">
+                <h2>Admin</h2>
+                <button onClick={scrapeAll} disabled={scrapingAll}>
+                  {scrapingAll ? 'Scraping All…' : 'Scrape All & Email Recommended Jobs'}
+                </button>
+                {scrapeAllMessage && <p className="scrape-message">{scrapeAllMessage}</p>}
+              </div>
+            )}
+
+            <div className="actions modal-footer">
+              <button onClick={() => setSettingsOpen(false)} className="modal-close">
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
