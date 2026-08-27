@@ -44,7 +44,7 @@ _HIDE_WEBDRIVER_SCRIPT = "Object.defineProperty(navigator, 'webdriver', { get: (
 
 @dataclass
 class FetchResult:
-    company_id: str
+    company_id: int
     url: str
     fetched_at: datetime
     html: str

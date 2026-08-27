@@ -10,8 +10,8 @@ def timestamp_for_filename(dt: datetime) -> str:
     return dt.strftime("%Y%m%dT%H%M%SZ")
 
 
-def write_raw_html(storage_root: str | Path, company_id: str, fetched_at: datetime, html: str) -> Path:
-    raw_dir = Path(storage_root) / company_id / "raw"
+def write_raw_html(storage_root: str | Path, company_id: int, fetched_at: datetime, html: str) -> Path:
+    raw_dir = Path(storage_root) / str(company_id) / "raw"
     raw_dir.mkdir(parents=True, exist_ok=True)
     out_path = raw_dir / f"{timestamp_for_filename(fetched_at)}.html"
     out_path.write_text(html)
@@ -31,10 +31,10 @@ def save_job_postings(jobs: list[JobPosting]) -> list[JobPosting]:
     # reappearance reads as a fresh lifetime (is_new compares
     # first_scrape_timestamp to latest_scrape_timestamp) rather than silently
     # extending the old row's streak across the gap.
-    company = jobs[0].source_company
+    company = jobs[0].company
     scraped_at = jobs[0].latest_scrape_timestamp
     previous_run_at = (
-        JobPosting.objects.filter(source_company=company, latest_scrape_timestamp__lt=scraped_at)
+        JobPosting.objects.filter(company=company, latest_scrape_timestamp__lt=scraped_at)
         .order_by("-latest_scrape_timestamp")
         .values_list("latest_scrape_timestamp", flat=True)
         .first()
@@ -42,7 +42,7 @@ def save_job_postings(jobs: list[JobPosting]) -> list[JobPosting]:
 
     job_keys = [job.job_key for job in jobs]
     latest_by_key: dict[str, JobPosting] = {}
-    for row in JobPosting.objects.filter(source_company=company, job_key__in=job_keys).order_by(
+    for row in JobPosting.objects.filter(company=company, job_key__in=job_keys).order_by(
         "latest_scrape_timestamp"
     ):
         latest_by_key[row.job_key] = row  # last write wins -> most recent lifetime per job_key

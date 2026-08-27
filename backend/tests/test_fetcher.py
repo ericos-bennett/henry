@@ -40,7 +40,7 @@ HTML_WITH_NOISE = """
 
 class FetchCompanyTest(unittest.TestCase):
     def test_appends_absolute_link_urls_to_visible_text(self):
-        company = Company(id="acme", name="Acme", url=f"data:text/html,{quote(HTML)}", frequency="0 * * * *")
+        company = Company(name="Acme", url=f"data:text/html,{quote(HTML)}", frequency="0 * * * *")
 
         result = fetch_company(company, PlaywrightSettings(headless=True, timeout_ms=10_000))
 
@@ -53,7 +53,7 @@ class FetchCompanyTest(unittest.TestCase):
 
     def test_strips_boilerplate_noise(self):
         company = Company(
-            id="acme", name="Acme", url=f"data:text/html,{quote(HTML_WITH_NOISE)}", frequency="0 * * * *"
+            name="Acme", url=f"data:text/html,{quote(HTML_WITH_NOISE)}", frequency="0 * * * *"
         )
 
         result = fetch_company(company, PlaywrightSettings(headless=True, timeout_ms=10_000))

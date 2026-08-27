@@ -1,5 +1,5 @@
 export interface Company {
-  id: string
+  id: number
   name: string
   url: string
   frequency: string
@@ -9,7 +9,7 @@ export interface Company {
 export interface JobPosting {
   id: number
   job_key: string
-  source_company: string
+  company_id: number
   first_scrape_timestamp: string
   latest_scrape_timestamp: string
   is_new: boolean
@@ -26,7 +26,7 @@ export interface JobPosting {
 }
 
 export interface ScrapeResult {
-  company_id: string
+  company_id: number
   jobs_found: number
   scraped_at: string
   skipped: boolean
@@ -103,31 +103,31 @@ export const api = {
       body: JSON.stringify(company),
     }),
 
-  setCompanyEnabled: (id: string, enabled: boolean) =>
+  setCompanyEnabled: (id: number, enabled: boolean) =>
     request<Company>(`/api/companies/${id}`, {
       method: 'PATCH',
       body: JSON.stringify({ enabled }),
     }),
 
-  setCompanyFrequency: (id: string, frequency: string) =>
+  setCompanyFrequency: (id: number, frequency: string) =>
     request<Company>(`/api/companies/${id}`, {
       method: 'PATCH',
       body: JSON.stringify({ frequency }),
     }),
 
-  setCompanyUrl: (id: string, url: string) =>
+  setCompanyUrl: (id: number, url: string) =>
     request<Company>(`/api/companies/${id}`, {
       method: 'PATCH',
       body: JSON.stringify({ url }),
     }),
 
-  deleteCompany: (id: string) =>
+  deleteCompany: (id: number) =>
     request<{ success: boolean }>(`/api/companies/${id}`, { method: 'DELETE' }),
 
-  listCompanyJobs: (id: string) =>
+  listCompanyJobs: (id: number) =>
     request<JobPosting[]>(`/api/companies/${id}/jobs?latest_only=true`),
 
-  scrapeCompany: (id: string) =>
+  scrapeCompany: (id: number) =>
     request<ScrapeResult>(`/api/companies/${id}/scrape`, { method: 'POST' }),
 
   scrapeAll: () => request<ScrapeAllResult>('/api/companies/scrape-all', { method: 'POST' }),

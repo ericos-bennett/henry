@@ -111,7 +111,7 @@ def _normalize_job_url(url: str | None) -> str | None:
     return url
 
 
-def _make_job_key(company_id: str, extracted: ExtractedJob) -> str:
+def _make_job_key(company_id: int, extracted: ExtractedJob) -> str:
     # Without a url, fall back to title + location rather than title alone — the
     # same role posted in multiple locations (e.g. "Client Delivery Lead" in both
     # Tokyo and Melbourne) is two distinct postings, not one.
@@ -145,7 +145,7 @@ def to_job_postings(
         postings.append(
             JobPosting(
                 job_key=job_key,
-                source_company=company,
+                company=company,
                 first_scrape_timestamp=scraped_at,
                 latest_scrape_timestamp=scraped_at,
                 title=job.title,

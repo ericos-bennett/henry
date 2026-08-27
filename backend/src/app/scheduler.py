@@ -35,17 +35,17 @@ def tick(now: datetime | None = None) -> None:
         try:
             due = croniter.match(company.frequency, local_now)
         except Exception:
-            logger.exception("scheduler: invalid cron for %s: %r", company.id, company.frequency)
+            logger.exception("scheduler: invalid cron for %s: %r", company.name, company.frequency)
             continue
         if due:
-            logger.info("scheduler: %s is due, scraping", company.id)
+            logger.info("scheduler: %s is due, scraping", company.name)
             due_companies.append(company)
 
     for company, outcome in run_scrapes_concurrently(due_companies):
         if isinstance(outcome, Exception):
-            logger.exception("scheduler: scrape failed for %s", company.id, exc_info=outcome)
+            logger.exception("scheduler: scrape failed for %s", company.name, exc_info=outcome)
         else:
-            logger.info("scheduler: %s scraped, %d jobs found", company.id, outcome.jobs_found)
+            logger.info("scheduler: %s scraped, %d jobs found", company.name, outcome.jobs_found)
 
 
 def _seconds_until_next_hour(now: datetime | None = None) -> float:

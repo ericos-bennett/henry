@@ -81,7 +81,7 @@ class PreferencesIn(Schema):
 
 
 class ScrapeResult(Schema):
-    company_id: str
+    company_id: int
     jobs_found: int
     scraped_at: datetime
     skipped: bool = False

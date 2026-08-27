@@ -5,7 +5,6 @@ import logging
 from django.contrib.auth import authenticate, login, logout
 from django.http import HttpRequest
 from django.shortcuts import get_object_or_404
-from django.utils.text import slugify
 from ninja import NinjaAPI
 from ninja.errors import HttpError
 from ninja.security import django_auth
@@ -85,7 +84,7 @@ def scrape_all_companies(request):
     for company, outcome in run_scrapes_concurrently(companies, notify=False):
         if isinstance(outcome, Exception):
             failed += 1
-            logger.exception("scrape failed for %s during scrape-all", company.id, exc_info=outcome)
+            logger.exception("scrape failed for %s during scrape-all", company.name, exc_info=outcome)
         else:
             jobs_found += outcome.jobs_found
 
@@ -100,25 +99,25 @@ def scrape_all_companies(request):
 
 
 @api.get("/companies/{company_id}", response=CompanyOut)
-def get_company(request, company_id: str):
+def get_company(request, company_id: int):
     return get_object_or_404(Company, pk=company_id, owner=request.user)
 
 
 @api.post("/companies", response={201: CompanyOut})
 def create_company(request, payload: CompanyIn):
-    company = Company.objects.create(id=slugify(payload.name), owner=request.user, **payload.dict())
+    company = Company.objects.create(owner=request.user, **payload.dict())
     if company.enabled:
         try:
             run_scrape(company)
         except Exception:
             # The company is created either way — a failed first scrape can be retried
             # via the "Scrape" button, same as any other scrape failure.
-            logger.exception("initial scrape failed for %s", company.id)
+            logger.exception("initial scrape failed for %s", company.name)
     return 201, company
 
 
 @api.patch("/companies/{company_id}", response=CompanyOut)
-def update_company(request, company_id: str, payload: CompanyPatch):
+def update_company(request, company_id: int, payload: CompanyPatch):
     company = get_object_or_404(Company, pk=company_id, owner=request.user)
     if payload.enabled is not None:
         company.enabled = payload.enabled
@@ -131,7 +130,7 @@ def update_company(request, company_id: str, payload: CompanyPatch):
 
 
 @api.delete("/companies/{company_id}")
-def delete_company(request, company_id: str):
+def delete_company(request, company_id: int):
     company = get_object_or_404(Company, pk=company_id, owner=request.user)
     company.delete()
     return {"success": True}
@@ -145,7 +144,7 @@ def _annotate_recommended(request, jobs: list[JobPosting]) -> list[JobPosting]:
 
 
 @api.get("/companies/{company_id}/jobs", response=list[JobPostingOut])
-def list_company_jobs(request, company_id: str, latest_only: bool = False):
+def list_company_jobs(request, company_id: int, latest_only: bool = False):
     company = get_object_or_404(Company, pk=company_id, owner=request.user)
     qs = company.job_postings.all().order_by("-latest_scrape_timestamp")
     if latest_only:
@@ -158,13 +157,13 @@ def list_company_jobs(request, company_id: str, latest_only: bool = False):
 @api.get("/jobs", response=list[JobPostingOut])
 def list_jobs(
     request,
-    company_id: str | None = None,
+    company_id: int | None = None,
     location: str | None = None,
     salary_min: float | None = None,
 ):
-    qs = JobPosting.objects.filter(source_company__owner=request.user).order_by("-latest_scrape_timestamp")
+    qs = JobPosting.objects.filter(company__owner=request.user).order_by("-latest_scrape_timestamp")
     if company_id:
-        qs = qs.filter(source_company_id=company_id)
+        qs = qs.filter(company_id=company_id)
     if location:
         qs = qs.filter(location__icontains=location)
     if salary_min is not None:
@@ -185,9 +184,9 @@ def update_preferences(request, payload: PreferencesIn):
 
 
 @api.post("/companies/{company_id}/scrape", response=ScrapeResult)
-def scrape_company(request, company_id: str):
+def scrape_company(request, company_id: int):
     company = get_object_or_404(Company, pk=company_id, owner=request.user)
     if not company.enabled:
         raise HttpError(400, "Company is disabled")
-    logger.info("scrape requested for %s by %s", company.id, request.user.username)
+    logger.info("scrape requested for %s by %s", company.name, request.user.username)
     return run_scrape(company)

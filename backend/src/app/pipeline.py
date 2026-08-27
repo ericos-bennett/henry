@@ -44,7 +44,7 @@ def run_scrape(company: Company, *, notify: bool = True) -> ScrapeResult:
         # Page text is byte-for-byte unchanged since the last successful scrape
         # (post-trim, per fetch_company) — nothing new to extract or notify about.
         jobs_found = _current_job_count(company)
-        logger.info("scraped %s: unchanged, skipped extraction (%d jobs)", company.id, jobs_found)
+        logger.info("scraped %s: unchanged, skipped extraction (%d jobs)", company.name, jobs_found)
         return ScrapeResult(
             company_id=company.id, jobs_found=jobs_found, scraped_at=result.fetched_at, skipped=True
         )
@@ -63,9 +63,9 @@ def run_scrape(company: Company, *, notify: bool = True) -> ScrapeResult:
         try:
             notify_new_recommended_jobs(company, saved)
         except Exception:
-            logger.exception("failed to send notification email for %s", company.id)
+            logger.exception("failed to send notification email for %s", company.name)
 
-    logger.info("scraped %s: %d jobs found", company.id, len(saved))
+    logger.info("scraped %s: %d jobs found", company.name, len(saved))
     return ScrapeResult(
         company_id=company.id, jobs_found=len(saved), scraped_at=result.fetched_at, skipped=False
     )

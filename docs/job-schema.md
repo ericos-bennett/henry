@@ -6,7 +6,7 @@ Since extraction is LLM-based across arbitrary company page layouts, quality and
 
 | Column | Type | Nullable | Description |
 |---|---|---|---|
-| `job_key` | string | no | Stable **content identity** of the posting, derived from `source_company_id` + `url` (or title + location, if no per-job URL exists). Unchanged across reappearances. Used by `save_job_postings()` to detect whether an incoming job continues an existing lifetime or starts a new one. Not unique — the same `job_key` can have multiple historical rows over time, one per lifetime; a row's actual identity is just the model's auto `id` primary key. |
+| `job_key` | string | no | Stable **content identity** of the posting, derived from `company_id` + `url` (or title + location, if no per-job URL exists). Unchanged across reappearances. Used by `save_job_postings()` to detect whether an incoming job continues an existing lifetime or starts a new one. Not unique — the same `job_key` can have multiple historical rows over time, one per lifetime; a row's actual identity is just the model's auto `id` primary key. |
 | `is_new` | boolean | — (computed, not a column) | `first_scrape_timestamp == latest_scrape_timestamp`. True for a row that hasn't yet survived a second scrape. Exposed as a property on the model (`JobPosting.is_new`) and via `JobPostingOut.is_new`/`resolve_is_new`, same pattern as `is_recommended` below. Drives the new-job notification email — see [architecture.md](./architecture.md) — except on a company's very first-ever scrape, where the email is explicitly suppressed even though every row is technically "new". |
 | `title` | string | no | Job title as posted. |
 | `url` | string | yes | Direct link to the job's description/detail page, if the page provides one — normalized away from an "Apply"-form URL when the two differ. |
@@ -17,8 +17,7 @@ Since extraction is LLM-based across arbitrary company page layouts, quality and
 | `salary_max` | float | yes | Best-effort parsed maximum salary. |
 | `salary_currency` | string | yes | e.g. "USD", if determinable. |
 | `posted_date` | string | yes | Date the job was posted, as posted (not normalized to a real date type — companies phrase this inconsistently too). |
-| `source_company` | FK → `Company.id` | no | The company this posting came from. |
-| `source_url` | string | no | The career page URL that was scraped to find this posting. |
+| `company` | FK → `Company.id` (`company_id` column) | no | The company this posting came from. |
 | `first_scrape_timestamp` | datetime (tz-aware) | no | When this lifetime was first seen. Fixed for the row's whole life. |
 | `latest_scrape_timestamp` | datetime (tz-aware) | no | When this lifetime was most recently seen. Bumped in place on every consecutive scrape that still finds the job — this is what replaces the old per-scrape snapshot rows. |
 
@@ -31,8 +30,7 @@ Every row is one continuous lifetime of a posting: `save_job_postings()` (`app/s
 ```json
 {
   "job_key": "9f3a1c2b4d5e",
-  "source_company_id": "acme-corp",
-  "source_url": "https://acme.example.com/careers",
+  "company_id": 42,
   "first_scrape_timestamp": "2026-08-20T10:00:00Z",
   "latest_scrape_timestamp": "2026-08-27T10:00:00Z",
   "title": "Senior Backend Engineer",

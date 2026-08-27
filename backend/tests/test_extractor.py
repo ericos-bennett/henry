@@ -44,7 +44,7 @@ class ToJobPostingsTest(unittest.TestCase):
         # hash to the same job_key via _make_job_key — e.g. a job double-listed under
         # two categories on the career page. Without dedup, save_job_postings()
         # would try to treat both as the same continuing/new lifetime within one batch.
-        company = Company(id="acme", name="Acme", url="https://acme.example/jobs", frequency="0 * * * *")
+        company = Company(name="Acme", url="https://acme.example/jobs", frequency="0 * * * *")
         scraped_at = datetime(2026, 8, 24, tzinfo=timezone.utc)
         jobs = [
             ExtractedJob(title="Software Engineer", url="https://acme.example/jobs/1"),
@@ -61,7 +61,7 @@ class ToJobPostingsTest(unittest.TestCase):
         # e.g. Kraken listing "Client Delivery Lead" separately for Tokyo and
         # Melbourne, with no url to distinguish them — these are two real postings,
         # not a duplicate, so both must survive with distinct job_keys.
-        company = Company(id="kraken", name="Kraken", url="https://jobs.ashbyhq.com/krakentech", frequency="0 * * * *")
+        company = Company(name="Kraken", url="https://jobs.ashbyhq.com/krakentech", frequency="0 * * * *")
         scraped_at = datetime(2026, 8, 24, tzinfo=timezone.utc)
         jobs = [
             ExtractedJob(title="Client Delivery Lead", location="Tokyo, Japan"),
@@ -76,7 +76,7 @@ class ToJobPostingsTest(unittest.TestCase):
     def test_strips_trailing_apply_segment_from_job_url(self):
         # Lever links straight to the application form via a trailing '/apply'
         # rather than the job's description page — normalize it away.
-        company = Company(id="voltus", name="Voltus", url="https://www.voltus.co/jobs", frequency="0 * * * *")
+        company = Company(name="Voltus", url="https://www.voltus.co/jobs", frequency="0 * * * *")
         scraped_at = datetime(2026, 8, 24, tzinfo=timezone.utc)
         jobs = [ExtractedJob(title="Software Engineer", url="https://jobs.lever.co/voltus/abc123/apply")]
 
@@ -85,7 +85,7 @@ class ToJobPostingsTest(unittest.TestCase):
         self.assertEqual(postings[0].url, "https://jobs.lever.co/voltus/abc123")
 
     def test_strips_trailing_apply_segment_with_trailing_slash(self):
-        company = Company(id="voltus", name="Voltus", url="https://www.voltus.co/jobs", frequency="0 * * * *")
+        company = Company(name="Voltus", url="https://www.voltus.co/jobs", frequency="0 * * * *")
         scraped_at = datetime(2026, 8, 24, tzinfo=timezone.utc)
         jobs = [ExtractedJob(title="Software Engineer", url="https://jobs.lever.co/voltus/abc123/apply/")]
 
@@ -94,7 +94,7 @@ class ToJobPostingsTest(unittest.TestCase):
         self.assertEqual(postings[0].url, "https://jobs.lever.co/voltus/abc123")
 
     def test_leaves_non_apply_urls_unchanged(self):
-        company = Company(id="voltus", name="Voltus", url="https://www.voltus.co/jobs", frequency="0 * * * *")
+        company = Company(name="Voltus", url="https://www.voltus.co/jobs", frequency="0 * * * *")
         scraped_at = datetime(2026, 8, 24, tzinfo=timezone.utc)
         jobs = [ExtractedJob(title="Software Engineer", url="https://jobs.lever.co/voltus/abc123")]
 
@@ -105,7 +105,7 @@ class ToJobPostingsTest(unittest.TestCase):
     def test_does_not_strip_apply_when_it_is_the_entire_path(self):
         # Stripping would leave a bare domain with no job identifier — keep the
         # original url rather than destroy the only distinguishing path segment.
-        company = Company(id="acme", name="Acme", url="https://acme.example/jobs", frequency="0 * * * *")
+        company = Company(name="Acme", url="https://acme.example/jobs", frequency="0 * * * *")
         scraped_at = datetime(2026, 8, 24, tzinfo=timezone.utc)
         jobs = [ExtractedJob(title="Software Engineer", url="https://acme.example/apply")]
 

@@ -56,8 +56,8 @@ Each tracked career page is a row in the `Company` table (see `backend/src/app/m
 
 | Field | Type | Description |
 |---|---|---|
-| `id` | string (PK) | Unique slug for the company (e.g. `"acme-corp"`), derived from `name` on creation via the API. |
-| `name` | string | Human-readable name, for logs/output. |
+| `id` | integer (PK) | Auto-incrementing, server-assigned on creation. |
+| `name` | string | Human-readable name; used to identify the company in logs/output. |
 | `url` | string | Career page URL to scrape. |
 | `frequency` | string | Cron expression, restricted to a fixed allowed set kept in sync with the frontend's dropdown (see [architecture.md](./architecture.md)) — arbitrary cron expressions are rejected. |
 | `enabled` | boolean | Set `false` to keep a company around but skip scheduling it (default `true`). |
@@ -66,8 +66,8 @@ Each tracked career page is a row in the `Company` table (see `backend/src/app/m
 Companies can be added/edited either via SQL directly against the local Postgres database:
 
 ```sql
-INSERT INTO app_company (id, name, url, frequency, enabled, owner_id)
-VALUES ('acme-corp', 'Acme Corp', 'https://acme.example.com/careers', '0 */6 * * *', true, 1);
+INSERT INTO app_company (name, url, frequency, enabled, owner_id)
+VALUES ('Acme Corp', 'https://acme.example.com/careers', '0 */6 * * *', true, 1);
 ```
 
 ...or via the REST API (see [architecture.md](./architecture.md) for the full endpoint list), authenticated as the owning user:

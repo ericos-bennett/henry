@@ -32,11 +32,11 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [jobsByCompany, setJobsByCompany] = useState<Record<string, JobPosting[]>>({})
-  const [jobsLoadingId, setJobsLoadingId] = useState<string | null>(null)
+  const [expandedId, setExpandedId] = useState<number | null>(null)
+  const [jobsByCompany, setJobsByCompany] = useState<Record<number, JobPosting[]>>({})
+  const [jobsLoadingId, setJobsLoadingId] = useState<number | null>(null)
 
-  const [scrapingId, setScrapingId] = useState<string | null>(null)
+  const [scrapingId, setScrapingId] = useState<number | null>(null)
   const [scrapeMessage, setScrapeMessage] = useState<string | null>(null)
 
   const [newCompany, setNewCompany] = useState<NewCompany>({
@@ -116,7 +116,7 @@ function App() {
     setCompanies([])
   }
 
-  const toggleJobs = async (id: string) => {
+  const toggleJobs = async (id: number) => {
     if (expandedId === id) {
       setExpandedId(null)
       return
@@ -135,7 +135,7 @@ function App() {
     }
   }
 
-  const scrape = async (id: string) => {
+  const scrape = async (id: number) => {
     const name = companies.find((c) => c.id === id)?.name ?? id
     setScrapingId(id)
     setScrapeMessage(null)
@@ -174,7 +174,7 @@ function App() {
     }
   }
 
-  const removeCompany = async (id: string) => {
+  const removeCompany = async (id: number) => {
     try {
       await api.deleteCompany(id)
       setCompanies((prev) => prev.filter((c) => c.id !== id))
@@ -211,7 +211,7 @@ function App() {
   // Re-fetch every already-loaded company's jobs, e.g. so is_recommended reflects
   // newly saved preferences or freshly scraped postings, not just what's expanded.
   const refreshCachedJobs = async () => {
-    const cachedCompanyIds = Object.keys(jobsByCompany)
+    const cachedCompanyIds = Object.keys(jobsByCompany).map(Number)
     if (cachedCompanyIds.length === 0) return
     const refreshed = await Promise.all(cachedCompanyIds.map((id) => api.listCompanyJobs(id)))
     setJobsByCompany((prev) => {

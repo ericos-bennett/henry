@@ -16,16 +16,16 @@ class JobRecommendationTest(TestCase):
         self.user = get_user_model().objects.create_user(username="alice", password="password123")
         self.client.force_login(self.user)
         self.company = Company.objects.create(
-            id="acme", name="Acme", url="https://acme.example/jobs", frequency="0 * * * *", owner=self.user
+            name="Acme", url="https://acme.example/jobs", frequency="0 * * * *", owner=self.user
         )
         scraped_at = datetime(2026, 8, 24, tzinfo=timezone.utc)
         JobPosting.objects.create(
-            job_key="a", source_company=self.company,
+            job_key="a", company=self.company,
             first_scrape_timestamp=scraped_at, latest_scrape_timestamp=scraped_at,
             title="Software Engineer", location="Tokyo, Japan",
         )
         JobPosting.objects.create(
-            job_key="b", source_company=self.company,
+            job_key="b", company=self.company,
             first_scrape_timestamp=scraped_at, latest_scrape_timestamp=scraped_at,
             title="Product Designer", location="Tokyo, Japan",
         )

@@ -13,7 +13,7 @@ from app.storage import save_job_postings
 def make_job(company: Company, job_key: str, scraped_at: datetime, **overrides) -> JobPosting:
     fields = dict(
         job_key=job_key,
-        source_company=company,
+        company=company,
         first_scrape_timestamp=scraped_at,
         latest_scrape_timestamp=scraped_at,
         title=f"Job {job_key}",
@@ -25,7 +25,7 @@ def make_job(company: Company, job_key: str, scraped_at: datetime, **overrides) 
 class SaveJobPostingsTest(TestCase):
     def setUp(self):
         self.company = Company.objects.create(
-            id="acme", name="Acme", url="https://acme.example/jobs", frequency="0 * * * *"
+            name="Acme", url="https://acme.example/jobs", frequency="0 * * * *"
         )
         self.first_run = datetime(2026, 8, 1, tzinfo=timezone.utc)
         self.second_run = self.first_run + timedelta(days=1)
@@ -43,7 +43,7 @@ class SaveJobPostingsTest(TestCase):
 
         saved = save_job_postings([make_job(self.company, "a", self.second_run, title="New Title")])
 
-        self.assertEqual(JobPosting.objects.filter(source_company=self.company, job_key="a").count(), 1)
+        self.assertEqual(JobPosting.objects.filter(company=self.company, job_key="a").count(), 1)
         row = saved[0]
         self.assertEqual(row.pk, original_pk)  # same row updated, not a new one inserted
         self.assertEqual(row.title, "New Title")
@@ -78,19 +78,19 @@ class SaveJobPostingsTest(TestCase):
         self.assertEqual(new_row.first_scrape_timestamp, third_run)
 
         # The original row from the first run is untouched, not overwritten.
-        self.assertEqual(JobPosting.objects.filter(source_company=self.company, job_key="a").count(), 2)
+        self.assertEqual(JobPosting.objects.filter(company=self.company, job_key="a").count(), 2)
         original_row = JobPosting.objects.get(pk=original_pk)
         self.assertEqual(original_row.latest_scrape_timestamp, self.first_run)
 
     def test_previous_run_lookup_is_scoped_per_company(self):
         # Acme has an earlier run containing job "a" (not "z"). Globex's own first-ever
         # run, timestamped after Acme's run, contains "z". If the "find the previous
-        # run" lookup weren't scoped to source_company, it would wrongly treat Acme's
+        # run" lookup weren't scoped to company, it would wrongly treat Acme's
         # run as Globex's "previous" run and treat "z" as a continuation (or at least
         # not a first-ever lifetime) instead of correctly falling back to the
         # no-prior-run default.
         other_company = Company.objects.create(
-            id="globex", name="Globex", url="https://globex.example/jobs", frequency="0 * * * *"
+            name="Globex", url="https://globex.example/jobs", frequency="0 * * * *"
         )
         save_job_postings([make_job(self.company, "a", self.first_run)])
 

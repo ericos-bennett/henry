@@ -17,7 +17,7 @@ SCRAPED_AT = datetime(2026, 8, 24, tzinfo=timezone.utc)
 def make_job(company: Company, title: str, *, is_new: bool, location: str | None = None) -> JobPosting:
     first = SCRAPED_AT if is_new else SCRAPED_AT - timedelta(days=1)
     return JobPosting(
-        job_key=title, source_company=company,
+        job_key=title, company=company,
         first_scrape_timestamp=first, latest_scrape_timestamp=SCRAPED_AT,
         title=title, location=location,
     )
@@ -29,7 +29,7 @@ class NotifyNewRecommendedJobsTest(TestCase):
             username="alice", password="password123", email="alice@example.com"
         )
         self.company = Company.objects.create(
-            id="acme", name="Acme", url="https://acme.example/jobs", frequency="0 * * * *", owner=self.owner
+            name="Acme", url="https://acme.example/jobs", frequency="0 * * * *", owner=self.owner
         )
         # locations is required alongside keywords for anything to match — most jobs
         # in this test class have no location (neutral/bypassed), except the ones in
@@ -116,7 +116,7 @@ class NotifyAllRecommendedJobsTest(TestCase):
     ):
         return JobPosting.objects.create(
             job_key=f"{company.id}:{title}",
-            source_company=company,
+            company=company,
             first_scrape_timestamp=first_scraped_at or scraped_at,
             latest_scrape_timestamp=scraped_at,
             title=title,
@@ -124,8 +124,8 @@ class NotifyAllRecommendedJobsTest(TestCase):
         )
 
     def test_groups_matches_across_companies_into_one_email(self):
-        acme = Company.objects.create(id="acme", name="Acme", url="https://acme.example/jobs", frequency="0 * * * *", owner=self.owner)
-        globex = Company.objects.create(id="globex", name="Globex", url="https://globex.example/jobs", frequency="0 * * * *", owner=self.owner)
+        acme = Company.objects.create(name="Acme", url="https://acme.example/jobs", frequency="0 * * * *", owner=self.owner)
+        globex = Company.objects.create(name="Globex", url="https://globex.example/jobs", frequency="0 * * * *", owner=self.owner)
         self.create_job(acme, "Software Engineer", scraped_at=SCRAPED_AT)
         self.create_job(globex, "Senior Engineer", scraped_at=SCRAPED_AT)
 
@@ -141,7 +141,7 @@ class NotifyAllRecommendedJobsTest(TestCase):
         self.assertIn("Senior Engineer", sent.body)
 
     def test_includes_matches_regardless_of_is_new(self):
-        acme = Company.objects.create(id="acme", name="Acme", url="https://acme.example/jobs", frequency="0 * * * *", owner=self.owner)
+        acme = Company.objects.create(name="Acme", url="https://acme.example/jobs", frequency="0 * * * *", owner=self.owner)
         earlier = datetime(2026, 8, 1, tzinfo=timezone.utc)
         self.create_job(acme, "Software Engineer", scraped_at=SCRAPED_AT, first_scraped_at=earlier)
 
@@ -151,7 +151,7 @@ class NotifyAllRecommendedJobsTest(TestCase):
         self.assertIn("Software Engineer", mail.outbox[0].body)
 
     def test_only_considers_each_companys_latest_scraped_batch(self):
-        acme = Company.objects.create(id="acme", name="Acme", url="https://acme.example/jobs", frequency="0 * * * *", owner=self.owner)
+        acme = Company.objects.create(name="Acme", url="https://acme.example/jobs", frequency="0 * * * *", owner=self.owner)
         earlier = datetime(2026, 8, 1, tzinfo=timezone.utc)
         self.create_job(acme, "Software Engineer", scraped_at=earlier)
         # Latest batch replaces it with a non-matching posting.
@@ -163,7 +163,7 @@ class NotifyAllRecommendedJobsTest(TestCase):
 
     def test_ignores_other_users_companies(self):
         other = get_user_model().objects.create_user(username="bob", password="password123", email="bob@example.com")
-        other_company = Company.objects.create(id="other", name="Other", url="https://other.example/jobs", frequency="0 * * * *", owner=other)
+        other_company = Company.objects.create(name="Other", url="https://other.example/jobs", frequency="0 * * * *", owner=other)
         self.create_job(other_company, "Software Engineer", scraped_at=SCRAPED_AT)
 
         notify_all_recommended_jobs(self.owner)
@@ -171,7 +171,7 @@ class NotifyAllRecommendedJobsTest(TestCase):
         self.assertEqual(len(mail.outbox), 0)
 
     def test_no_email_when_nothing_matches(self):
-        acme = Company.objects.create(id="acme", name="Acme", url="https://acme.example/jobs", frequency="0 * * * *", owner=self.owner)
+        acme = Company.objects.create(name="Acme", url="https://acme.example/jobs", frequency="0 * * * *", owner=self.owner)
         self.create_job(acme, "Product Designer", scraped_at=SCRAPED_AT)
 
         notify_all_recommended_jobs(self.owner)
@@ -181,7 +181,7 @@ class NotifyAllRecommendedJobsTest(TestCase):
     def test_no_email_when_user_has_no_email(self):
         self.owner.email = ""
         self.owner.save()
-        acme = Company.objects.create(id="acme", name="Acme", url="https://acme.example/jobs", frequency="0 * * * *", owner=self.owner)
+        acme = Company.objects.create(name="Acme", url="https://acme.example/jobs", frequency="0 * * * *", owner=self.owner)
         self.create_job(acme, "Software Engineer", scraped_at=SCRAPED_AT)
 
         notify_all_recommended_jobs(self.owner)

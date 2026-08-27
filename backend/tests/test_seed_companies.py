@@ -70,8 +70,8 @@ class SeedCompaniesTest(unittest.TestCase):
 
             existing_response = client.get("/api/companies")
             existing_response.raise_for_status()
-            # Check by name, not a guessed id/slug: existing rows may predate the
-            # server's current slugify-from-name scheme, so an id guess can miss.
+            # Check by name, not id: ids are server-assigned auto-increment
+            # integers, so there's nothing to guess from the company name.
             existing_names = {c["name"] for c in existing_response.json()}
 
             for company in TEST_COMPANIES:

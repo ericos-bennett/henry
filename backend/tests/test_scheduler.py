@@ -24,10 +24,10 @@ class TickDispatchTest(TestCase):
         # happens to be UTC, so pick frequencies relative to server-local time
         # instead by using the always-due "0 * * * *" vs. a clearly-not-due one.
         self.hourly = Company.objects.create(
-            id="acme", name="Acme", url="https://acme.example/jobs", frequency="0 * * * *", enabled=True
+            name="Acme", url="https://acme.example/jobs", frequency="0 * * * *", enabled=True
         )
         self.weekly = Company.objects.create(
-            id="globex", name="Globex", url="https://globex.example/jobs", frequency="0 8 * * 0", enabled=True
+            name="Globex", url="https://globex.example/jobs", frequency="0 8 * * 0", enabled=True
         )
         self.now = datetime(2026, 8, 26, 12, 0, tzinfo=timezone.utc)  # a Wednesday
 
@@ -39,7 +39,7 @@ class TickDispatchTest(TestCase):
 
         mock_run_scrapes.assert_called_once()
         dispatched_ids = {c.id for c in mock_run_scrapes.call_args.args[0]}
-        self.assertEqual(dispatched_ids, {"acme"})
+        self.assertEqual(dispatched_ids, {self.hourly.id})
 
     @mock.patch("app.scheduler.run_scrapes_concurrently")
     def test_disabled_companies_never_considered(self, mock_run_scrapes, mock_close_old_connections):
@@ -55,11 +55,11 @@ class TickDispatchTest(TestCase):
     @mock.patch("app.scheduler.run_scrapes_concurrently")
     def test_one_failure_does_not_stop_others_from_being_logged(self, mock_run_scrapes, mock_close_old_connections):
         other_due = Company.objects.create(
-            id="initech", name="Initech", url="https://initech.example/jobs", frequency="0 * * * *", enabled=True
+            name="Initech", url="https://initech.example/jobs", frequency="0 * * * *", enabled=True
         )
         mock_run_scrapes.return_value = [
             (self.hourly, RuntimeError("boom")),
-            (other_due, ScrapeResult(company_id="initech", jobs_found=2, scraped_at=django_timezone.now())),
+            (other_due, ScrapeResult(company_id=other_due.id, jobs_found=2, scraped_at=django_timezone.now())),
         ]
 
         # Should complete without raising, despite one outcome being an exception.

@@ -6,7 +6,6 @@ from django.db import models
 
 
 class Company(models.Model):
-    id = models.CharField(max_length=100, primary_key=True)
     name = models.CharField(max_length=200)
     url = models.URLField(max_length=500)
     frequency = models.CharField(max_length=100)
@@ -32,7 +31,7 @@ class JobPosting(models.Model):
     # rows means a reappearance, not a continuation — see save_job_postings()
     # in app/storage.py). Row identity itself is just the auto pk (`id`).
     job_key = models.CharField(max_length=64, db_index=True)
-    source_company = models.ForeignKey(
+    company = models.ForeignKey(
         Company, on_delete=models.CASCADE, related_name="job_postings"
     )
     first_scrape_timestamp = models.DateTimeField()
@@ -52,17 +51,17 @@ class JobPosting(models.Model):
     class Meta:
         indexes = [
             models.Index(
-                fields=["source_company", "latest_scrape_timestamp"],
+                fields=["company", "latest_scrape_timestamp"],
                 name="jp_company_latest_idx",
             ),
             models.Index(
-                fields=["source_company", "job_key"],
+                fields=["company", "job_key"],
                 name="jp_company_jobkey_idx",
             ),
         ]
 
     def __str__(self) -> str:
-        return f"{self.title} ({self.source_company_id})"
+        return f"{self.title} ({self.company_id})"
 
     @property
     def is_new(self) -> bool:
