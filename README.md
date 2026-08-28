@@ -75,19 +75,21 @@ cd frontend
 
 This installs npm dependencies and starts the dev server. Opens at `http://localhost:5173/`. The Vite dev server proxies `/api/*` requests to `http://127.0.0.1:8000`, so no CORS setup is needed — just make sure the backend is running on port 8000 first.
 
-## Fast Launch
+## Fast Launch (Local Development)
 
 Once the above setup is complete, the entire suite can be managed along with a Grafana container and TMUX sessions with two simple commands.
 
 ```sh
-./start-all.sh
-./stop-all.sh
+./local-start.sh
+./local-stop.sh
 ```
 
-For the always-on home-server deployment (Gunicorn + Caddy + scheduler behind a
-Cloudflare tunnel, managed by systemd): `git pull` then `./server-deploy.sh` to
-build + install + (re)start, `./server-teardown.sh` to stop and remove the units.
-See [`production-deployment.md`](./docs/production-deployment.md).
+## Fast Launch (Home Server)
+
+```sh
+./server-start.sh
+./server-stop.sh
+```
 
 ## Docs in this folder
 
