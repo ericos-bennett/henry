@@ -7,4 +7,4 @@ set -a
 set +a
 
 npm ci
-npm run dev -- --host "${VITE_HOST:-127.0.0.1}"
+npm run dev

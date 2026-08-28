@@ -9,13 +9,13 @@ export default defineConfig(({ mode }) => {
 
   // Extra Host headers the dev server will accept, comma-separated (e.g. a LAN
   // hostname or a tunnel domain). Localhost/127.0.0.1 are always allowed.
-  const allowedHosts = (env.DEV_ALLOWED_HOSTS ?? '')
+  const allowedHosts = (env.ALLOWED_HOSTS ?? '')
     .split(',')
     .map((h) => h.trim())
     .filter(Boolean)
 
   // Where /api/* is proxied. Must be the Django backend's address.
-  const apiTarget = env.DEV_API_TARGET || 'http://127.0.0.1:8000'
+  const apiTarget = env.API_TARGET || 'http://127.0.0.1:8000'
 
   return {
     plugins: [react()],
