@@ -50,15 +50,12 @@ The API is now live at `http://127.0.0.1:8000/api/`.Django Ninja's interactive A
 uv run python manage.py createsuperuser
 ```
 
+#### 5. Run Tests
 
-#### 5. Seed some Companies
-
-[`tests/test_seed_companies.py`](./backend/tests/test_seed_companies.py) creates 3 real companies (Uplight, Voltus, Development Seed), owned by a user account, by logging in and then hitting `POST /api/companies` on the server you just started — a quick way to bootstrap data on a fresh database. It's safe to re-run (companies that already exist, for that user, are skipped).
-
-Pass the credentials for your admin user created above to run the command.
+From `backend/`, with Postgres running (Django creates and drops its own test database):
 
 ```sh
-CAREER_SCRAPER_SEED_USERNAME=<username> CAREER_SCRAPER_SEED_PASSWORD=<password> uv run python tests/test_seed_companies.py
+uv run python manage.py test
 ```
 
 ### Frontend
