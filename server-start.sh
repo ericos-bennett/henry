@@ -34,20 +34,6 @@ REPO_ROOT="$(pwd)"
 SKIP_BUILD=0
 [ "${1:-}" = "--skip-build" ] && SKIP_BUILD=1
 
-# --- tunables (override via env) ---
-export HENRY_FRONTEND_DIST="${HENRY_FRONTEND_DIST:-$REPO_ROOT/frontend/dist}"
-export HENRY_BACKEND_BIND="${HENRY_BACKEND_BIND:-127.0.0.1:8000}"
-# Local HTTP port Caddy serves on. TLS is terminated by Cloudflare; cloudflared
-# (its own service) connects the public hostname to this port over the tunnel.
-export HENRY_HTTP_PORT="${HENRY_HTTP_PORT:-8080}"
-GUNICORN_WORKERS="${GUNICORN_WORKERS:-3}"
-# Worker request timeout. The scrape endpoints (POST /companies/scrape-all and
-# /companies/{id}/scrape) run synchronously in the worker, so this also caps how
-# long a scrape triggered from the UI may take before the worker is killed and the
-# request 502s. The hourly scheduler runs in its own process and is unaffected.
-GUNICORN_TIMEOUT="${GUNICORN_TIMEOUT:-60}"
-CADDYFILE="${CADDYFILE:-$REPO_ROOT/Caddyfile}"
-
 command -v uv    >/dev/null || { echo "ERROR: uv not found on PATH" >&2; exit 1; }
 command -v caddy >/dev/null || { echo "ERROR: caddy not found on PATH" >&2; exit 1; }
 [ -f backend/.env ] || { echo "ERROR: backend/.env is missing" >&2; exit 1; }
@@ -62,6 +48,22 @@ if [ "${DJANGO_DEBUG:-}" = "true" ]; then
 	echo "ERROR: DJANGO_DEBUG=true in backend/.env - refusing to start in production." >&2
 	exit 1
 fi
+
+# --- tunables --- resolved after .env so they can be set there (or in the shell /
+# a systemd unit); the values here are only fallbacks.
+export HENRY_FRONTEND_DIST="${HENRY_FRONTEND_DIST:-$REPO_ROOT/frontend/dist}"
+export HENRY_BACKEND_BIND="${HENRY_BACKEND_BIND:-127.0.0.1:8000}"
+# Local HTTP port Caddy serves on. TLS is terminated by Cloudflare; cloudflared
+# (its own service) connects the public hostname to this port over the tunnel.
+# Change it if something else already owns 8080 (e.g. a Docker container).
+export HENRY_HTTP_PORT="${HENRY_HTTP_PORT:-8080}"
+GUNICORN_WORKERS="${GUNICORN_WORKERS:-3}"
+# Worker request timeout. The scrape endpoints (POST /companies/scrape-all and
+# /companies/{id}/scrape) run synchronously in the worker, so this also caps how
+# long a scrape triggered from the UI may take before the worker is killed and the
+# request 502s. The hourly scheduler runs in its own process and is unaffected.
+GUNICORN_TIMEOUT="${GUNICORN_TIMEOUT:-60}"
+CADDYFILE="${CADDYFILE:-$REPO_ROOT/Caddyfile}"
 
 if [ "$SKIP_BUILD" -eq 0 ]; then
 	echo "==> Syncing backend dependencies"
