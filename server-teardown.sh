@@ -2,10 +2,12 @@
 #
 # Stop Henry on the home server and remove its systemd units.
 #
-# Stops and disables henry-web / henry-scheduler / henry-caddy, deletes their
-# unit files, and reloads systemd. Re-run server-deploy.sh to bring it all back.
+# Takes a final pg_dump snapshot (deploy/backup-db.sh), then stops and disables
+# henry-web / henry-scheduler / henry-caddy, deletes their unit files, and reloads
+# systemd. Re-run server-deploy.sh to bring it all back.
 #
-# Does NOT touch: cloudflared, Postgres, the checked-out repo, or the database.
+# Does NOT touch: cloudflared, Postgres, the checked-out repo, or the database
+# contents (the snapshot is read-only).
 #
 # Run as the normal app user (it calls sudo where needed).
 #
@@ -14,6 +16,8 @@
 #   ./server-teardown.sh --yes    no prompt
 
 set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")"
+REPO_ROOT="$(pwd)"
 
 if [ "$EUID" -eq 0 ]; then
 	echo "ERROR: run this as your normal user, not root/sudo." >&2
@@ -30,6 +34,9 @@ if [ "$ASSUME_YES" -eq 0 ]; then
 	[ "$ans" = "y" ] || [ "$ans" = "Y" ] || { echo "aborted"; exit 0; }
 fi
 
+# Final snapshot. Don't let a backup failure block the teardown.
+"$REPO_ROOT/deploy/backup-db.sh" teardown || echo "WARNING: backup failed - continuing with teardown" >&2
+
 for svc in "${SERVICES[@]}"; do
 	echo "==> Stopping/disabling $svc"
 	sudo systemctl disable --now "$svc.service" 2>/dev/null || true
@@ -43,4 +50,5 @@ sudo systemctl reset-failed "${SERVICES[@]/%/.service}" 2>/dev/null || true
 echo
 echo "Henry services stopped and removed."
 echo "Still running (unchanged): cloudflared, postgresql."
+echo "DB snapshot saved (see the backup path printed above)."
 echo "Bring Henry back with: ./server-deploy.sh"

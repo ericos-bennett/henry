@@ -10,9 +10,9 @@
 #
 # Deploys the working tree as-is - `git pull` yourself first to pick up new code.
 #
-# NOTE: no database backup is taken - `migrate` runs against the live DB with no
-# safety net. Take a `pg_dump` by hand before deploying anything with a risky
-# migration, until the backup timer (item 5) lands.
+# A pg_dump snapshot is taken before migrations run (deploy/backup-db.sh, keeps
+# the 10 most recent in ~/henry-backups or $HENRY_BACKUP_DIR). A failed backup
+# aborts the deploy.
 #
 # Postgres and cloudflared are managed separately (their own services).
 # Run as the normal app user - it calls sudo only for the systemd parts.
@@ -28,7 +28,7 @@ if [ "$EUID" -eq 0 ]; then
 	exit 1
 fi
 
-for cmd in uv caddy npm sudo systemctl; do
+for cmd in uv caddy npm sudo systemctl pg_dump; do
 	command -v "$cmd" >/dev/null || { echo "ERROR: $cmd not found on PATH" >&2; exit 1; }
 done
 [ -f backend/.env ] || { echo "ERROR: backend/.env is missing" >&2; exit 1; }
@@ -57,6 +57,8 @@ npm --prefix frontend ci
 npm --prefix frontend run build
 
 # --- 2. migrate ------------------------------------------------------------------
+"$REPO_ROOT/deploy/backup-db.sh" deploy
+
 echo "==> Applying migrations"
 ( cd backend && uv run --no-sync python manage.py migrate --noinput )
 

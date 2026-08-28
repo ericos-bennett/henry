@@ -1,8 +1,10 @@
 # Production Deployment Plan (home server / mini PC)
 
-Status: **in progress** — items 1–4 done, items 5–7 remain. Target: run Henry as
-a persistent always-on service on a mini PC, reachable at
-`henry.fourthwallride.com` via a Cloudflare tunnel.
+Status: **in progress** — items 1–4 done, `/api/health` done, deploy/teardown DB
+backups done; remaining: scheduled + off-box backups (5), mini-PC resource tuning
+(6), snapshot/JobPosting retention (7). Target: run Henry as a persistent
+always-on service on a mini PC, reachable at `henry.fourthwallride.com` via a
+Cloudflare tunnel.
 
 This is the gap between the current dev setup (`runserver` + Vite dev server in
 tmux, `DEBUG=True`, in-process scheduler thread, no backups) and a deployment
@@ -124,21 +126,21 @@ Logs → journald (`LOGGING` writes to stdout): `journalctl -u henry-web -f`.
 
 Still open: `henry-backup.timer` for scheduled (not just pre-deploy) dumps — item 5.
 
-## 5. Backups  🔴 do this first — production data has no safety net today
+## 5. Backups
 
-Context: a schema migration wiped the dev DB once already. There is no dump, and
-Postgres.app ships with `archive_mode = off`.
+Context: a schema migration wiped the dev DB once already.
 
-- [ ] `henry-backup.service`: `pg_dump -Fc career_scraper > /backups/henry-$(date +%F-%H%M).dump`
-- [ ] `henry-backup.timer`: daily (or hourly if scrape volume grows).
-- [ ] Retention: keep ~7 daily + ~4 weekly, prune older. Simple `find -mtime`
-      prune step in the service script.
-- [ ] **Off-box copy**: rsync at least one recent dump to another machine or a
-      cheap object store. A dead SSD takes local-only backups with it.
-- [x] **Decouple `migrate` from service start** — done in item 4. `migrate` and
-      the build steps live in `server-deploy.sh`; the units just run the app and
-      never touch the schema. (A pre-deploy `pg_dump` step lived here briefly then
-      was pulled — re-add it, or a `henry-backup.timer`, as part of this item.)
+- [x] **`deploy/backup-db.sh`** — `pg_dump -Fc` to `$HENRY_BACKUP_DIR`
+      (default `~/henry-backups`), filename `henry-<timestamp>[-<label>].dump`,
+      then prunes to the **10 most recent**. `server-deploy.sh` runs it (labelled
+      `deploy`) right before `migrate` and aborts if it fails; `server-teardown.sh`
+      runs it (labelled `teardown`) but continues on failure.
+- [x] **Decouple `migrate` from service start** — item 4. `migrate` / build /
+      backup all live in `server-deploy.sh`; the units just run the app.
+- [ ] **Scheduled** dumps (`henry-backup.timer`), not just deploy/teardown — a
+      box that isn't redeployed for weeks has weeks-old backups.
+- [ ] **Off-box copy**: rsync a recent dump to another machine or object store.
+      A dead SSD takes local-only backups with it.
 - [ ] Any future migration that drops/flushes rows: take an explicit named dump
       and confirm before running. (See memory: data-loss changes need an upfront
       backup plan.)
