@@ -84,8 +84,11 @@ Once the above setup is complete, the entire suite can be managed along with a G
 ./stop-all.sh
 ```
 
-For the always-on home-server deployment (Gunicorn + Caddy + scheduler, no tmux),
-use `./server-start.sh` instead — see [`production-deployment.md`](./docs/production-deployment.md).
+For the always-on home-server deployment (Gunicorn + Caddy + scheduler behind a
+Cloudflare tunnel, managed by systemd): `./server-deploy.sh` to build + install +
+(re)start, `./server-teardown.sh` to stop and remove the units. `./server-start.sh`
+runs the same stack in the foreground without systemd, for debugging. See
+[`production-deployment.md`](./docs/production-deployment.md).
 
 ## Docs in this folder
 
