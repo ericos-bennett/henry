@@ -161,8 +161,9 @@ Postgres.app ships with `archive_mode = off`.
 
 ## 7. Minor / nice-to-have
 
-- [ ] Add an unauthenticated `GET /api/health` returning `{"status": "ok"}` for
-      Caddy / systemd / uptime checks. (Every current endpoint needs auth.)
+- [x] Unauthenticated `GET /api/health` → `{"status": "ok"}` for Caddy / systemd
+      / uptime checks (`api.py`, `auth=None`, no DB access). Test in
+      `tests/test_api_health.py`.
 - [ ] Schedule `clear-snapshots.sh` (raw HTML dumps under `backend/data/*/raw/`
       grow unbounded) on a weekly systemd timer, or add age-based retention.
 - [ ] Consider a `JobPosting` retention policy once history accumulates — see

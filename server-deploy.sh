@@ -107,7 +107,7 @@ for svc in henry-web henry-scheduler henry-caddy; do
 done
 echo
 echo "Logs:   journalctl -u henry-web -f   (or -scheduler / -caddy)"
-echo "Local:  curl -sI http://localhost:${HENRY_HTTP_PORT:-8081}/"
+echo "Health: curl -s http://localhost:${HENRY_HTTP_PORT:-8081}/api/health"
 
 TZ_NAME="$(timedatectl show -p Timezone --value 2>/dev/null || echo unknown)"
 if [ "$TZ_NAME" = "Etc/UTC" ] || [ "$TZ_NAME" = "UTC" ]; then

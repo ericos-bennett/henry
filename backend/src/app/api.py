@@ -57,6 +57,13 @@ def logout_view(request):
     return {"success": True}
 
 
+@api.get("/health", auth=None)
+def health(request):
+    """Unauthenticated liveness check for Caddy / systemd / uptime monitors.
+    Returns 200 as long as the WSGI app is up; does not touch the database."""
+    return {"status": "ok"}
+
+
 @api.get("/me", response=UserOut)
 def me(request):
     return request.user
