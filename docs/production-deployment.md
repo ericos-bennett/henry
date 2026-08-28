@@ -11,30 +11,31 @@ Work items are ordered by priority. Each is independently landable.
 
 ---
 
-## 1. Make Django settings production-safe
+## 1. Make Django settings production-safe  ✅ done (branch `prod-settings`)
 
-`backend/src/app/settings.py` currently hardcodes `DEBUG = True` and a dev
-`SECRET_KEY`. Make them environment-driven:
+`backend/src/app/settings.py` used to hardcode `DEBUG = True` and a dev
+`SECRET_KEY`. Now environment-driven:
 
-- [ ] `DEBUG = os.environ.get("DJANGO_DEBUG", "").lower() == "true"` (default False)
-- [ ] `SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]` — no fallback in prod.
+- [x] `DEBUG = os.environ.get("DJANGO_DEBUG", "").lower() == "true"` (default False).
+      Local `.env` and `.env.example` set `DJANGO_DEBUG=true`.
+- [x] `SECRET_KEY` — dev fallback only when `DEBUG`; with `DEBUG` off, a missing
+      `DJANGO_SECRET_KEY` raises `ImproperlyConfigured` at startup.
       Generate: `python -c "import secrets; print(secrets.token_urlsafe(50))"`
-- [ ] `ALLOWED_HOSTS` — add `henry.fourthwallride.com` via `DJANGO_ALLOWED_HOSTS`
-- [ ] `CSRF_TRUSTED_ORIGINS` — add `https://henry.fourthwallride.com`
-- [ ] `CONN_MAX_AGE = 60` in the `DATABASES["default"]` dict — reuse Postgres
-      connections instead of reopening per request
-- [ ] TLS-behind-proxy hardening (once Caddy is terminating TLS — item 2):
-      `SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")`,
-      `SESSION_COOKIE_SECURE = True`, `CSRF_COOKIE_SECURE = True`,
-      `SECURE_HSTS_SECONDS = 31536000`
-- [ ] Static files for the Django admin (`/controls/`) and Ninja docs
-      (`/api/docs`): add `whitenoise` to `pyproject.toml`, insert
-      `whitenoise.middleware.WhiteNoiseMiddleware` right after
-      `SecurityMiddleware`, set `STATIC_ROOT = BASE_DIR / "staticfiles"`,
-      `STORAGES["staticfiles"]` to the WhiteNoise compressed backend. Run
-      `manage.py collectstatic` in the deploy script.
+- [x] `ALLOWED_HOSTS` / `CSRF_TRUSTED_ORIGINS` — already env-driven; `.env` carries
+      `henry.fourthwallride.com`. `.env.example` comment updated.
+- [x] `CONN_MAX_AGE = 60` in `_database_from_url()`
+- [x] TLS-behind-proxy hardening — gated behind `DJANGO_SECURE_SSL=true` (keep off
+      until Caddy terminates TLS — item 2): `SECURE_PROXY_SSL_HEADER`,
+      `SESSION_COOKIE_SECURE`, `CSRF_COOKIE_SECURE`, `SECURE_HSTS_SECONDS`
+      (+ `INCLUDE_SUBDOMAINS`, `PRELOAD`), `SECURE_SSL_REDIRECT`.
+- [x] Added `SecurityMiddleware`, `WhiteNoiseMiddleware`, `XFrameOptionsMiddleware`
+      to `MIDDLEWARE`; `whitenoise` in `pyproject.toml`; `STATIC_ROOT`,
+      `STORAGES["staticfiles"]` → `whitenoise.storage.CompressedStaticFilesStorage`;
+      `staticfiles/` gitignored. `collectstatic` still needs adding to `deploy.sh`
+      (item 5).
 
-Keep everything env-driven so `.env` stays the single source of config.
+`manage.py check --deploy` is clean in prod mode. Hermetic coverage in
+`backend/tests/test_settings.py`.
 
 ## 2. Serve properly (Gunicorn + built frontend + Caddy)
 

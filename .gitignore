@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 data/
 otel-data/
+staticfiles/
 .env
 
 node_modules/
