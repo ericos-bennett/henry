@@ -35,8 +35,8 @@ crontab_without_block() {
 case "$ACTION" in
 	run)
 		echo "=== henry maintenance $(date -u '+%Y-%m-%dT%H:%M:%SZ') ==="
-		# DB dump — writes henry-<stamp>-weekly.dump into $HENRY_BACKUP_DIR
-		# (default ~/backups/henry), keeps the 10 most recent across all labels.
+		# DB dump — writes henry-<stamp>-weekly.dump into $HENRY_BACKUP_DIR/db
+		# (default ~/backups/henry/db), keeps the 10 most recent across all labels.
 		"$REPO_ROOT/infra/backup-db.sh" weekly
 		# Prune raw HTML snapshots older than the retention window.
 		load_env

@@ -30,7 +30,7 @@ def run_scrape(company: Company, *, notify: bool = True) -> ScrapeResult:
     skipped on a company's first-ever scrape, regardless of `notify`.
     """
     result = fetch_company(company, config.settings.playwright)
-    write_raw_html(config.settings.storage.root, company.id, result.fetched_at, result.html)
+    write_raw_html(config.settings.storage.scrapes_dir, company.id, result.fetched_at, result.html)
 
     # Checked before saving: every job on a company's very first scrape has
     # first_scrape_timestamp == latest_scrape_timestamp (is_new=True) by

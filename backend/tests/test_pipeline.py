@@ -34,7 +34,10 @@ class RunScrapeSkipTest(TestCase):
     @mock.patch("app.pipeline.notify_new_recommended_jobs")
     @mock.patch("app.pipeline.extractor")
     @mock.patch("app.pipeline.fetch_company")
-    def test_first_scrape_always_extracts_and_sets_hash(self, mock_fetch, mock_extractor, mock_notify):
+    @mock.patch("app.pipeline.write_raw_html")
+    def test_first_scrape_always_extracts_and_sets_hash(
+        self, _mock_write, mock_fetch, mock_extractor, mock_notify
+    ):
         mock_fetch.return_value = fake_fetch("Senior Engineer (https://acme.example/jobs/1)", self.t1)
         mock_extractor.extract.return_value = [ExtractedJob(title="Senior Engineer", url="https://acme.example/jobs/1")]
 
@@ -51,7 +54,10 @@ class RunScrapeSkipTest(TestCase):
     @mock.patch("app.pipeline.notify_new_recommended_jobs")
     @mock.patch("app.pipeline.extractor")
     @mock.patch("app.pipeline.fetch_company")
-    def test_unchanged_content_skips_extraction_and_notify(self, mock_fetch, mock_extractor, mock_notify):
+    @mock.patch("app.pipeline.write_raw_html")
+    def test_unchanged_content_skips_extraction_and_notify(
+        self, _mock_write, mock_fetch, mock_extractor, mock_notify
+    ):
         text = "Senior Engineer (https://acme.example/jobs/1)"
         mock_fetch.return_value = fake_fetch(text, self.t1)
         mock_extractor.extract.return_value = [ExtractedJob(title="Senior Engineer", url="https://acme.example/jobs/1")]
@@ -71,7 +77,10 @@ class RunScrapeSkipTest(TestCase):
     @mock.patch("app.pipeline.notify_new_recommended_jobs")
     @mock.patch("app.pipeline.extractor")
     @mock.patch("app.pipeline.fetch_company")
-    def test_changed_content_re_extracts_and_updates_hash(self, mock_fetch, mock_extractor, mock_notify):
+    @mock.patch("app.pipeline.write_raw_html")
+    def test_changed_content_re_extracts_and_updates_hash(
+        self, _mock_write, mock_fetch, mock_extractor, mock_notify
+    ):
         mock_fetch.return_value = fake_fetch("Senior Engineer (https://acme.example/jobs/1)", self.t1)
         mock_extractor.extract.return_value = [ExtractedJob(title="Senior Engineer", url="https://acme.example/jobs/1")]
         run_scrape(self.company)

@@ -44,8 +44,21 @@ class PlaywrightSettings(BaseModel):
     max_pages: int = 20
 
 
+def _backup_base() -> Path:
+    """Root directory for all on-disk backup artifacts, from HENRY_BACKUP_DIR
+    (env, loaded from backend/.env) or ~/backups/henry. DB dumps go in <base>/db,
+    raw scrape HTML in <base>/scrapes."""
+    return Path(os.environ.get("HENRY_BACKUP_DIR") or "~/backups/henry").expanduser()
+
+
 class StorageSettings(BaseModel):
-    root: str = "data/"
+    @property
+    def db_dir(self) -> Path:
+        return _backup_base() / "db"
+
+    @property
+    def scrapes_dir(self) -> Path:
+        return _backup_base() / "scrapes"
 
 
 class LoggingSettings(BaseModel):

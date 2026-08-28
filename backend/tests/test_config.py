@@ -5,7 +5,9 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from app.config import LLMSettings, PlaywrightSettings
+from pathlib import Path
+
+from app.config import LLMSettings, PlaywrightSettings, StorageSettings
 
 
 class LLMSettingsTest(unittest.TestCase):
@@ -37,3 +39,17 @@ class LLMSettingsTest(unittest.TestCase):
 class PlaywrightSettingsTest(unittest.TestCase):
     def test_max_concurrency_defaults_to_four(self):
         self.assertEqual(PlaywrightSettings().max_concurrency, 4)
+
+
+class StorageSettingsTest(unittest.TestCase):
+    def test_defaults_to_home_backups_henry(self):
+        s = StorageSettings()
+        with patch.dict("os.environ", {}, clear=True):
+            self.assertEqual(s.db_dir, Path.home() / "backups/henry/db")
+            self.assertEqual(s.scrapes_dir, Path.home() / "backups/henry/scrapes")
+
+    def test_henry_backup_dir_env_drives_both_subdirs(self):
+        s = StorageSettings()
+        with patch.dict("os.environ", {"HENRY_BACKUP_DIR": "/mnt/backups"}):
+            self.assertEqual(s.db_dir, Path("/mnt/backups/db"))
+            self.assertEqual(s.scrapes_dir, Path("/mnt/backups/scrapes"))

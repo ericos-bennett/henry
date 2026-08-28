@@ -4,7 +4,5 @@ settings:
     timeout_ms: 30000
     max_concurrency: 4
     max_pages: 20
-  storage:
-    root: data/
   logging:
     level: info
