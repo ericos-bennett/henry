@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Launches Caddy as the local HTTP router (henry-caddy.service / server-start.sh):
+# Launches Caddy as the local HTTP router (ExecStart for henry-caddy.service):
 # serves the built SPA and reverse-proxies /api /controls /static to Gunicorn.
 # TLS is terminated upstream by Cloudflare; cloudflared connects to HENRY_HTTP_PORT.
 set -euo pipefail

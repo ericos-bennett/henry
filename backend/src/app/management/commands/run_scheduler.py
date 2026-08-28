@@ -8,7 +8,7 @@ from app.scheduler import _run_loop
 class Command(BaseCommand):
     help = (
         "Run the company-scrape scheduler loop in the foreground. Intended to run as "
-        "its own process (systemd unit / server-start.sh), separate from the web "
+        "its own process (the henry-scheduler systemd unit), separate from the web "
         "server, so exactly one scheduler is live regardless of Gunicorn worker count."
     )
 

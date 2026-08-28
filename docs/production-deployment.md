@@ -12,7 +12,7 @@ Work items are ordered by priority. Each is independently landable.
 
 ---
 
-## 1. Make Django settings production-safe  ✅ done (branch `prod-serve`)
+## 1. Make Django settings production-safe  ✅ done
 
 `backend/src/app/settings.py` used to hardcode `DEBUG = True` and a dev
 `SECRET_KEY`. Now environment-driven:
@@ -32,13 +32,12 @@ Work items are ordered by priority. Each is independently landable.
 - [x] Added `SecurityMiddleware`, `WhiteNoiseMiddleware`, `XFrameOptionsMiddleware`
       to `MIDDLEWARE`; `whitenoise` in `pyproject.toml`; `STATIC_ROOT`,
       `STORAGES["staticfiles"]` → `whitenoise.storage.CompressedStaticFilesStorage`;
-      `staticfiles/` gitignored. `collectstatic` still needs adding to `deploy.sh`
-      (item 5).
+      `staticfiles/` gitignored. `collectstatic` runs in `server-deploy.sh` (item 4).
 
 `manage.py check --deploy` is clean in prod mode. Hermetic coverage in
 `backend/tests/test_settings.py`.
 
-## 2. Serve properly (Gunicorn + built frontend + Caddy behind Cloudflare Tunnel)  ✅ done (branch `prod-serve`)
+## 2. Serve properly (Gunicorn + built frontend + Caddy behind Cloudflare Tunnel)  ✅ done
 
 `runserver` / Vite dev server are no longer used in production. Ingress:
 
@@ -49,12 +48,10 @@ browser → Cloudflare edge (TLS) → cloudflared tunnel → Caddy :8080 (HTTP) 
 
 New at repo root:
 
-- **`server-start.sh`** — production launcher. Builds the frontend, runs
-  `collectstatic`, refuses to start with unapplied migrations or `DJANGO_DEBUG=true`,
-  then runs Gunicorn + `run_scheduler` + Caddy together in the foreground with a
-  cleanup trap (any one exiting stops the others). `--skip-build` to run only.
-  Interim until systemd (item 4) — a systemd unit can just exec this script, or
-  item 4 splits it into three units. Does **not** run cloudflared (its own service).
+- **`deploy/run-{web,scheduler,caddy}.sh`** — the per-service launchers
+  (Gunicorn / `manage.py run_scheduler` / Caddy). Used as the systemd `ExecStart`
+  (item 4). Each sources `backend/.env`; none of them run cloudflared (its own
+  service).
 - **`Caddyfile`** — local HTTP router only (`auto_https off`, listens on
   `HENRY_HTTP_PORT`, default 8080). Serves the built SPA, proxies `/api/*`
   `/controls/*` `/static/*` to Gunicorn, and forces `X-Forwarded-Proto: https`
@@ -73,7 +70,7 @@ New at repo root:
 Still open: OpenTelemetry instrumentation of Gunicorn (item 6 — currently runs
 plain, no `opentelemetry-instrument` wrapper).
 
-## 3. Move the scheduler out of the web process  ✅ done (branch `prod-serve`)
+## 3. Move the scheduler out of the web process  ✅ done
 
 `apps.py:_should_start_scheduler()` used to return `True` unconditionally under
 any WSGI server — every Gunicorn worker would start its own scheduler thread
@@ -84,15 +81,15 @@ any WSGI server — every Gunicorn worker would start its own scheduler thread
       in the foreground as its own process.
 - [x] `_should_start_scheduler()` WSGI branch now returns
       `os.environ.get("HENRY_RUN_SCHEDULER") == "1"` (default off). `runserver` +
-      `RUN_MAIN` dev behaviour unchanged. `server-start.sh` sets the env var only
-      on the `run_scheduler` subprocess, never on Gunicorn.
+      `RUN_MAIN` dev behaviour unchanged. Only `deploy/run-scheduler.sh` sets the
+      env var; Gunicorn never sees it.
 - [x] Coverage: `ShouldStartSchedulerTest` in `tests/test_scheduler.py`.
-- [ ] Run as its own single-instance systemd service (item 4).
+- [x] Runs as its own single-instance systemd service `henry-scheduler` (item 4).
 
 Benefit beyond the bug fix: restart the web app without interrupting an
 in-progress scrape, and vice versa.
 
-## 4. Process supervision with systemd (replaces tmux)  ✅ done
+## 4. Process supervision with systemd (replaces tmux)  ✅ done (branch `prod-systemd`)
 
 Two scripts at repo root drive the whole lifecycle; Postgres and cloudflared
 stay as their own services.
@@ -118,8 +115,9 @@ absolute paths + `PATH` baked in, `Restart=always`, `WantedBy=multi-user.target`
 | `henry-caddy.service` | `deploy/run-caddy.sh` | repo root |
 
 The `deploy/run-*.sh` launchers are the single source of truth for how each
-service starts — `server-start.sh` (foreground, no systemd) calls the same three.
-Config comes from `backend/.env` (sourced by each launcher), not `EnvironmentFile`.
+service starts. Config comes from `backend/.env` (sourced by each launcher), not
+an `EnvironmentFile`. To run one in the foreground for debugging:
+`sudo systemctl stop henry-web && ./deploy/run-web.sh`.
 
 Logs → journald (`LOGGING` writes to stdout): `journalctl -u henry-web -f`.
 
@@ -138,8 +136,7 @@ Postgres.app ships with `archive_mode = off`.
       cheap object store. A dead SSD takes local-only backups with it.
 - [x] **Decouple `migrate` from service start** — done in item 4. `migrate` /
       build / `pg_dump` all live in `server-deploy.sh`; the units just run the
-      app. `server-start.sh` refuses to start with pending migrations rather than
-      applying them.
+      app and never touch the schema.
 - [ ] Any future migration that drops/flushes rows: take an explicit named dump
       and confirm before running. (See memory: data-loss changes need an upfront
       backup plan.)

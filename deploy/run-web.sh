@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 #
-# Launches the Django WSGI app under Gunicorn. Used both by the systemd unit
-# henry-web.service and by server-start.sh (foreground mode). Reads backend/.env
-# for its knobs; server-deploy.sh is responsible for `uv sync`, so this uses
-# --no-sync to start fast and not touch the venv.
+# Launches the Django WSGI app under Gunicorn (ExecStart for henry-web.service).
+# Reads backend/.env for its knobs; server-deploy.sh is responsible for `uv sync`,
+# so this uses --no-sync to start fast and not touch the venv.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
