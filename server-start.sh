@@ -49,14 +49,10 @@ if [ "${DJANGO_DEBUG:-}" = "true" ]; then
 	exit 1
 fi
 
-# --- tunables --- resolved after .env so they can be set there (or in the shell /
-# a systemd unit); the values here are only fallbacks.
 export HENRY_FRONTEND_DIST="${HENRY_FRONTEND_DIST:-$REPO_ROOT/frontend/dist}"
 export HENRY_BACKEND_BIND="${HENRY_BACKEND_BIND:-127.0.0.1:8000}"
-# Local HTTP port Caddy serves on. TLS is terminated by Cloudflare; cloudflared
-# (its own service) connects the public hostname to this port over the tunnel.
-# Change it if something else already owns 8080 (e.g. a Docker container).
-export HENRY_HTTP_PORT="${HENRY_HTTP_PORT:-8080}"
+export HENRY_HTTP_PORT="${HENRY_HTTP_PORT:-8081}"
+
 GUNICORN_WORKERS="${GUNICORN_WORKERS:-3}"
 # Worker request timeout. The scrape endpoints (POST /companies/scrape-all and
 # /companies/{id}/scrape) run synchronously in the worker, so this also caps how
