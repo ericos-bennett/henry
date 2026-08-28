@@ -2,13 +2,17 @@
 #
 # Deploy / redeploy Henry on the home server.
 #
-# Pulls the latest code, rebuilds the frontend and backend, snapshots the
-# database, applies migrations, then installs (or refreshes) the three systemd
-# units and restarts them so the new code is live:
+# Pulls the latest code, rebuilds the frontend and backend, applies migrations,
+# then installs (or refreshes) the three systemd units and restarts them so the
+# new code is live:
 #
 #   henry-web.service        Gunicorn (Django WSGI app)      -> 127.0.0.1:8000
 #   henry-scheduler.service  hourly scrape scheduler
 #   henry-caddy.service      local HTTP router               -> HENRY_HTTP_PORT
+#
+# NOTE: no database backup is taken - `migrate` runs against the live DB with no
+# safety net. Take a `pg_dump` by hand before deploying anything with a risky
+# migration, until the backup timer (item 5) lands.
 #
 # Postgres and cloudflared are managed separately (their own services).
 # Run as the normal app user - it calls sudo only for the systemd parts.
@@ -16,21 +20,15 @@
 # Usage:
 #   ./server-deploy.sh                 pull + build + migrate + (re)install + restart
 #   ./server-deploy.sh --skip-pull     don't touch git (deploy the working tree as-is)
-#   ./server-deploy.sh --skip-backup   skip the pre-migration pg_dump (NOT recommended)
-#
-# Env:
-#   HENRY_BACKUP_DIR   where pre-deploy dumps go (default: ~/henry-backups)
 
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 REPO_ROOT="$(pwd)"
 
 SKIP_PULL=0
-SKIP_BACKUP=0
 for arg in "$@"; do
 	case "$arg" in
-		--skip-pull)   SKIP_PULL=1 ;;
-		--skip-backup) SKIP_BACKUP=1 ;;
+		--skip-pull) SKIP_PULL=1 ;;
 		*) echo "unknown option: $arg" >&2; exit 2 ;;
 	esac
 done
@@ -40,14 +38,13 @@ if [ "$EUID" -eq 0 ]; then
 	exit 1
 fi
 
-for cmd in git uv caddy npm pg_dump sudo systemctl; do
+for cmd in git uv caddy npm sudo systemctl; do
 	command -v "$cmd" >/dev/null || { echo "ERROR: $cmd not found on PATH" >&2; exit 1; }
 done
 [ -f backend/.env ] || { echo "ERROR: backend/.env is missing" >&2; exit 1; }
 
 UNIT_USER="$(id -un)"
 UNIT_GROUP="$(id -gn)"
-BACKUP_DIR="${HENRY_BACKUP_DIR:-$HOME/henry-backups}"
 
 # --- 1. code ---------------------------------------------------------------
 if [ "$SKIP_PULL" -eq 0 ]; then
@@ -63,7 +60,6 @@ if [ "${DJANGO_DEBUG:-}" = "true" ]; then
 	echo "ERROR: DJANGO_DEBUG=true in backend/.env - refusing to deploy." >&2
 	exit 1
 fi
-[ -n "${DATABASE_URL:-}" ] || { echo "ERROR: DATABASE_URL not set in backend/.env" >&2; exit 1; }
 
 # --- 2. build ------------------------------------------------------------------
 echo "==> Syncing backend dependencies"
@@ -76,22 +72,7 @@ echo "==> Building frontend"
 npm --prefix frontend ci
 npm --prefix frontend run build
 
-# --- 3. database snapshot + migrate ------------------------------------------
-if [ "$SKIP_BACKUP" -eq 0 ]; then
-	mkdir -p "$BACKUP_DIR"
-	DUMP="$BACKUP_DIR/henry-predeploy-$(date +%Y%m%d-%H%M%S).dump"
-	echo "==> Backing up database -> $DUMP"
-	if ! pg_dump "$DATABASE_URL" -Fc -f "$DUMP"; then
-		echo "ERROR: pg_dump failed - not applying migrations. Fix the backup or pass --skip-backup." >&2
-		rm -f "$DUMP"
-		exit 1
-	fi
-	# keep the 10 most recent dumps
-	ls -1t "$BACKUP_DIR"/henry-predeploy-*.dump 2>/dev/null | tail -n +11 | xargs -r rm -f
-else
-	echo "==> Skipping database backup (--skip-backup)"
-fi
-
+# --- 3. migrate ------------------------------------------------------------------
 echo "==> Applying migrations"
 ( cd backend && uv run --no-sync python manage.py migrate --noinput )
 

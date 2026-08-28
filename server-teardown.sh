@@ -5,8 +5,7 @@
 # Stops and disables henry-web / henry-scheduler / henry-caddy, deletes their
 # unit files, and reloads systemd. Re-run server-deploy.sh to bring it all back.
 #
-# Does NOT touch: cloudflared, Postgres, the checked-out repo, the database, or
-# the pre-deploy dumps in ~/henry-backups.
+# Does NOT touch: cloudflared, Postgres, the checked-out repo, or the database.
 #
 # Run as the normal app user (it calls sudo where needed).
 #

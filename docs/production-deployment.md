@@ -94,13 +94,13 @@ in-progress scrape, and vice versa.
 Two scripts at repo root drive the whole lifecycle; Postgres and cloudflared
 stay as their own services.
 
-- **`server-deploy.sh`** — `git pull --ff-only` → `uv sync` → `playwright install
-  chromium` → build frontend → **`pg_dump` snapshot** to `~/henry-backups`
-  (keeps last 10; `--skip-backup` / `--skip-pull` to opt out) → `migrate` →
+- **`server-deploy.sh`** — `git pull --ff-only` (`--skip-pull` to opt out) →
+  `uv sync` → `playwright install chromium` → build frontend → `migrate` →
   `collectstatic` → (re)write the three unit files → `daemon-reload` →
   `enable` + `restart`. Run as the app user; it `sudo`s only for the systemd
   parts. Warns if the system timezone is UTC (scheduler matches cron against
-  server-local time).
+  server-local time). **No DB backup** — `migrate` runs with no safety net until
+  item 5; `pg_dump` by hand before any risky migration.
 - **`server-teardown.sh`** — `disable --now` + delete the three unit files +
   `daemon-reload` + `reset-failed`. Prompts unless `--yes`. Leaves cloudflared,
   Postgres, the repo, the DB, and the dumps untouched.
@@ -134,9 +134,10 @@ Postgres.app ships with `archive_mode = off`.
       prune step in the service script.
 - [ ] **Off-box copy**: rsync at least one recent dump to another machine or a
       cheap object store. A dead SSD takes local-only backups with it.
-- [x] **Decouple `migrate` from service start** — done in item 4. `migrate` /
-      build / `pg_dump` all live in `server-deploy.sh`; the units just run the
-      app and never touch the schema.
+- [x] **Decouple `migrate` from service start** — done in item 4. `migrate` and
+      the build steps live in `server-deploy.sh`; the units just run the app and
+      never touch the schema. (A pre-deploy `pg_dump` step lived here briefly then
+      was pulled — re-add it, or a `henry-backup.timer`, as part of this item.)
 - [ ] Any future migration that drops/flushes rows: take an explicit named dump
       and confirm before running. (See memory: data-loss changes need an upfront
       backup plan.)
