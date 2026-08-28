@@ -94,13 +94,14 @@ in-progress scrape, and vice versa.
 Two scripts at repo root drive the whole lifecycle; Postgres and cloudflared
 stay as their own services.
 
-- **`server-deploy.sh`** — `git pull --ff-only` (`--skip-pull` to opt out) →
-  `uv sync` → `playwright install chromium` → build frontend → `migrate` →
-  `collectstatic` → (re)write the three unit files → `daemon-reload` →
-  `enable` + `restart`. Run as the app user; it `sudo`s only for the systemd
-  parts. Warns if the system timezone is UTC (scheduler matches cron against
-  server-local time). **No DB backup** — `migrate` runs with no safety net until
-  item 5; `pg_dump` by hand before any risky migration.
+- **`server-deploy.sh`** — `uv sync` → `playwright install chromium` → build
+  frontend → `migrate` → `collectstatic` → (re)write the three unit files →
+  `daemon-reload` → `enable` + `restart`. Deploys the working tree as-is
+  (`git pull` yourself first). Takes no arguments. Run as the app user; it
+  `sudo`s only for the systemd parts. Warns if the system timezone is UTC
+  (scheduler matches cron against server-local time). **No DB backup** —
+  `migrate` runs with no safety net until item 5; `pg_dump` by hand before any
+  risky migration.
 - **`server-teardown.sh`** — `disable --now` + delete the three unit files +
   `daemon-reload` + `reset-failed`. Prompts unless `--yes`. Leaves cloudflared,
   Postgres, the repo, the DB, and the dumps untouched.

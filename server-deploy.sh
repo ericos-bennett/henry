@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 #
-# Deploy / redeploy Henry on the home server.
-#
-# Pulls the latest code, rebuilds the frontend and backend, applies migrations,
-# then installs (or refreshes) the three systemd units and restarts them so the
-# new code is live:
+# Deploy / redeploy Henry on the home server: builds the frontend and backend,
+# applies migrations, then installs (or refreshes) the three systemd units and
+# restarts them so the current checkout is live:
 #
 #   henry-web.service        Gunicorn (Django WSGI app)      -> 127.0.0.1:8000
 #   henry-scheduler.service  hourly scrape scheduler
 #   henry-caddy.service      local HTTP router               -> HENRY_HTTP_PORT
+#
+# Deploys the working tree as-is - `git pull` yourself first to pick up new code.
 #
 # NOTE: no database backup is taken - `migrate` runs against the live DB with no
 # safety net. Take a `pg_dump` by hand before deploying anything with a risky
@@ -16,41 +16,25 @@
 #
 # Postgres and cloudflared are managed separately (their own services).
 # Run as the normal app user - it calls sudo only for the systemd parts.
-#
-# Usage:
-#   ./server-deploy.sh                 pull + build + migrate + (re)install + restart
-#   ./server-deploy.sh --skip-pull     don't touch git (deploy the working tree as-is)
 
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
 REPO_ROOT="$(pwd)"
 
-SKIP_PULL=0
-for arg in "$@"; do
-	case "$arg" in
-		--skip-pull) SKIP_PULL=1 ;;
-		*) echo "unknown option: $arg" >&2; exit 2 ;;
-	esac
-done
+[ "$#" -eq 0 ] || { echo "usage: $0  (no arguments)" >&2; exit 2; }
 
 if [ "$EUID" -eq 0 ]; then
 	echo "ERROR: run this as your normal user, not root/sudo (it sudo's where needed)." >&2
 	exit 1
 fi
 
-for cmd in git uv caddy npm sudo systemctl; do
+for cmd in uv caddy npm sudo systemctl; do
 	command -v "$cmd" >/dev/null || { echo "ERROR: $cmd not found on PATH" >&2; exit 1; }
 done
 [ -f backend/.env ] || { echo "ERROR: backend/.env is missing" >&2; exit 1; }
 
 UNIT_USER="$(id -un)"
 UNIT_GROUP="$(id -gn)"
-
-# --- 1. code ---------------------------------------------------------------
-if [ "$SKIP_PULL" -eq 0 ]; then
-	echo "==> git pull --ff-only"
-	git pull --ff-only
-fi
 
 set -a
 source backend/.env
@@ -61,7 +45,7 @@ if [ "${DJANGO_DEBUG:-}" = "true" ]; then
 	exit 1
 fi
 
-# --- 2. build ------------------------------------------------------------------
+# --- 1. build ------------------------------------------------------------------
 echo "==> Syncing backend dependencies"
 ( cd backend && uv sync )
 
@@ -72,14 +56,14 @@ echo "==> Building frontend"
 npm --prefix frontend ci
 npm --prefix frontend run build
 
-# --- 3. migrate ------------------------------------------------------------------
+# --- 2. migrate ------------------------------------------------------------------
 echo "==> Applying migrations"
 ( cd backend && uv run --no-sync python manage.py migrate --noinput )
 
 echo "==> Collecting static files"
 ( cd backend && uv run --no-sync python manage.py collectstatic --noinput )
 
-# --- 4. systemd units --------------------------------------------------------
+# --- 3. systemd units --------------------------------------------------------
 PATH_VALUE="$PATH"
 
 write_unit() {
@@ -115,7 +99,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable henry-web.service henry-scheduler.service henry-caddy.service
 sudo systemctl restart henry-web.service henry-scheduler.service henry-caddy.service
 
-# --- 5. report -------------------------------------------------------------
+# --- 4. report -------------------------------------------------------------
 sleep 2
 echo
 for svc in henry-web henry-scheduler henry-caddy; do
