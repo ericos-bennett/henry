@@ -16,10 +16,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # is required - fail loudly at startup rather than run with a known key.
 # Generate one: python -c "import secrets; print(secrets.token_urlsafe(50))"
 DEBUG = os.environ.get("DJANGO_DEBUG", "").lower() == "true"
-if DEBUG:
-    SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-secret-key-change-for-real-deployment")
-elif os.environ.get("DJANGO_SECRET_KEY"):
-    SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
+# .get() default doesn't cover DJANGO_SECRET_KEY="" (present but blank, e.g. copied
+# straight from .env.example), so treat empty as unset here.
+_secret_key = os.environ.get("DJANGO_SECRET_KEY", "").strip()
+if _secret_key:
+    SECRET_KEY = _secret_key
+elif DEBUG:
+    SECRET_KEY = "dev-secret-key-change-for-real-deployment"
 else:
     raise ImproperlyConfigured(
         "DJANGO_SECRET_KEY must be set when DJANGO_DEBUG is not 'true'. "

@@ -84,10 +84,13 @@ Once the above setup is complete, the entire suite can be managed along with a G
 ./stop-all.sh
 ```
 
+For the always-on home-server deployment (Gunicorn + Caddy + scheduler, no tmux),
+use `./server-start.sh` instead — see [`production-deployment.md`](./docs/production-deployment.md).
+
 ## Docs in this folder
 
 - [`architecture.md`](./docs/architecture.md) — system components, data flow, and repo structure.
 - [`config-schema.md`](./docs/config-schema.md) — settings file format and the `Company` model.
 - [`job-schema.md`](./docs/job-schema.md) — the `JobPosting` schema for an extracted job posting.
 - [`roadmap.md`](./docs/roadmap.md) — phased build plan (V1/V2/V3) and open questions/risks.
-- [`production-deployment.md`](./docs/production-deployment.md) — plan for running Henry as an always-on service on a home server (not yet implemented).
+- [`production-deployment.md`](./docs/production-deployment.md) — running Henry as an always-on service on a home server (in progress).

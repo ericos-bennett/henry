@@ -34,6 +34,10 @@ def _should_start_scheduler() -> bool:
         # scheduler won't start in that mode.
         return os.environ.get("RUN_MAIN") == "true"
 
-    # Not invoked via manage.py (e.g. a WSGI server importing app.wsgi:application
-    # directly) - no autoreloader/RUN_MAIN concept here, so start unconditionally.
-    return True
+    # Not invoked via manage.py (e.g. Gunicorn importing app.wsgi:application).
+    # Do NOT start unconditionally here: every Gunicorn worker would spawn its own
+    # scheduler thread, so each company would be scraped once per worker per tick
+    # (Nx the LLM spend and load on target sites). In production the scheduler runs
+    # as its own single process via `manage.py run_scheduler`; this env gate is a
+    # deliberate opt-in for any other WSGI-style entrypoint that wants it.
+    return os.environ.get("HENRY_RUN_SCHEDULER") == "1"

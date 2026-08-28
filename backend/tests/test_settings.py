@@ -66,10 +66,16 @@ class SettingsTest(unittest.TestCase):
         self.assertIsNone(values["SESSION_COOKIE_SECURE"])
 
     def test_debug_mode_allows_fallback_secret_key(self):
-        values = load_settings({"DJANGO_DEBUG": "true"})
-        assert values is not None
-        self.assertTrue(values["DEBUG"])
-        self.assertTrue(values["SECRET_KEY"])
+        # DJANGO_SECRET_KEY absent, and present-but-blank (copied from .env.example)
+        # both fall back to the dev key under DEBUG.
+        for env in ({"DJANGO_DEBUG": "true"}, {"DJANGO_DEBUG": "true", "DJANGO_SECRET_KEY": ""}):
+            values = load_settings(env)
+            assert values is not None, env
+            self.assertTrue(values["DEBUG"])
+            self.assertTrue(values["SECRET_KEY"])
+
+    def test_blank_secret_key_still_fails_in_prod(self):
+        self.assertIsNone(load_settings({"DJANGO_SECRET_KEY": "   "}))
 
     def test_conn_max_age_and_whitenoise_always_set(self):
         values = load_settings({"DJANGO_DEBUG": "true"})

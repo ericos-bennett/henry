@@ -3,12 +3,15 @@ own test database and a mocked run_scrapes_concurrently (no live scraping)."""
 
 from __future__ import annotations
 
+import os
+import sys
 from datetime import datetime, timezone
 from unittest import mock
 
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.utils import timezone as django_timezone
 
+from app.apps import _should_start_scheduler
 from app.models import Company
 from app.scheduler import tick
 from app.schemas import ScrapeResult
@@ -64,3 +67,29 @@ class TickDispatchTest(TestCase):
 
         # Should complete without raising, despite one outcome being an exception.
         tick(self.now)
+
+
+class ShouldStartSchedulerTest(SimpleTestCase):
+    """_should_start_scheduler() decides whether AppConfig.ready() spawns the
+    in-process scheduler thread. Under a WSGI server (Gunicorn) it must NOT, or
+    every worker runs its own scheduler."""
+
+    def _check(self, argv, env):
+        with mock.patch.object(sys, "argv", argv), mock.patch.dict(os.environ, env, clear=True):
+            return _should_start_scheduler()
+
+    def test_runserver_bootstrap_starts(self):
+        self.assertTrue(self._check(["manage.py", "runserver"], {"RUN_MAIN": "true"}))
+
+    def test_runserver_parent_process_does_not_start(self):
+        self.assertFalse(self._check(["manage.py", "runserver"], {}))
+
+    def test_other_manage_commands_do_not_start(self):
+        self.assertFalse(self._check(["manage.py", "migrate"], {"RUN_MAIN": "true"}))
+        self.assertFalse(self._check(["manage.py", "run_scheduler"], {}))
+
+    def test_wsgi_does_not_start_by_default(self):
+        self.assertFalse(self._check(["gunicorn"], {}))
+
+    def test_wsgi_starts_only_with_explicit_env_opt_in(self):
+        self.assertTrue(self._check(["gunicorn"], {"HENRY_RUN_SCHEDULER": "1"}))

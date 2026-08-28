@@ -1,7 +1,8 @@
 # Production Deployment Plan (home server / mini PC)
 
-Status: **not yet implemented** — plan only. Target: run Henry as a persistent
-always-on service on a LAN mini PC, reachable at `henry.fourthwallride.com`.
+Status: **in progress** — items 1–3 done (branch `prod-serve`), items 4–7 remain.
+Target: run Henry as a persistent always-on service on a mini PC, reachable at
+`henry.fourthwallride.com` via a Cloudflare tunnel.
 
 This is the gap between the current dev setup (`runserver` + Vite dev server in
 tmux, `DEBUG=True`, in-process scheduler thread, no backups) and a deployment
@@ -11,7 +12,7 @@ Work items are ordered by priority. Each is independently landable.
 
 ---
 
-## 1. Make Django settings production-safe  ✅ done (branch `prod-settings`)
+## 1. Make Django settings production-safe  ✅ done (branch `prod-serve`)
 
 `backend/src/app/settings.py` used to hardcode `DEBUG = True` and a dev
 `SECRET_KEY`. Now environment-driven:
@@ -37,58 +38,65 @@ Work items are ordered by priority. Each is independently landable.
 `manage.py check --deploy` is clean in prod mode. Hermetic coverage in
 `backend/tests/test_settings.py`.
 
-## 2. Serve properly (Gunicorn + built frontend + Caddy)
+## 2. Serve properly (Gunicorn + built frontend + Caddy behind Cloudflare Tunnel)  ✅ done (branch `prod-serve`)
 
-Stop using `runserver` and the Vite dev server.
+`runserver` / Vite dev server are no longer used in production. Ingress:
 
-- [ ] **Backend**: add `gunicorn` to `pyproject.toml`. Run
-      `gunicorn app.wsgi:application --workers 3 --bind 127.0.0.1:8000`
-      (`app/wsgi.py` already exists). 2–3 workers is plenty for personal use.
-- [ ] **Frontend**: `npm run build` produces `frontend/dist/`. Serve it as
-      static files — do not run Vite in production. The `/api` proxy currently
-      done by Vite moves to Caddy.
-- [ ] **Reverse proxy**: Caddy. Serves `frontend/dist`, proxies `/api/*` and
-      `/controls/*` to `127.0.0.1:8000`, terminates TLS automatically via
-      Let's Encrypt. Sketch Caddyfile:
+```
+browser → Cloudflare edge (TLS) → cloudflared tunnel → Caddy :8080 (HTTP) → Gunicorn :8000
+                                                        ↘ frontend/dist (static SPA)
+```
 
-      ```
-      henry.fourthwallride.com {
-          root * /srv/henry/frontend/dist
-          @backend path /api/* /controls/* /static/*
-          handle @backend {
-              reverse_proxy 127.0.0.1:8000
-          }
-          handle {
-              try_files {path} /index.html
-              file_server
-          }
-      }
-      ```
+New at repo root:
 
-## 3. Move the scheduler out of the web process  ⚠️ correctness bug otherwise
+- **`server-start.sh`** — production launcher. Builds the frontend, runs
+  `collectstatic`, refuses to start with unapplied migrations or `DJANGO_DEBUG=true`,
+  then runs Gunicorn + `run_scheduler` + Caddy together in the foreground with a
+  cleanup trap (any one exiting stops the others). `--skip-build` to run only.
+  Interim until systemd (item 4) — a systemd unit can just exec this script, or
+  item 4 splits it into three units. Does **not** run cloudflared (its own service).
+- **`Caddyfile`** — local HTTP router only (`auto_https off`, listens on
+  `HENRY_HTTP_PORT`, default 8080). Serves the built SPA, proxies `/api/*`
+  `/controls/*` `/static/*` to Gunicorn, and forces `X-Forwarded-Proto: https`
+  upstream since the real TLS hop is at Cloudflare. Env: `HENRY_HTTP_PORT`,
+  `HENRY_FRONTEND_DIST`, `HENRY_BACKEND_BIND`. No ACME, no `setcap`, no open
+  inbound ports. (To expose the box directly instead: switch the site address to
+  `{$HENRY_DOMAIN}` and drop the header override — Caddy then does Let's Encrypt.)
+- `gunicorn` added to `pyproject.toml`. Run with 3 workers, `--max-requests`
+  recycling, and `--timeout 60` (`GUNICORN_TIMEOUT`). The scrape endpoints run
+  synchronously in the worker, so that 60s also bounds a UI-triggered scrape
+  before the worker is killed — a large `scrape-all` can still exceed it; the
+  real fix (background jobs for scrape-all) is deferred.
+- Frontend already calls `/api/*` relative — nothing to configure, Caddy routes it.
+- cloudflared ingress rule: `henry.fourthwallride.com → http://localhost:8080`.
 
-`backend/src/app/apps.py:_should_start_scheduler()` returns `True`
-**unconditionally** when the app is not launched via `manage.py` — i.e. under
-*any* WSGI server. Every Gunicorn worker would start its own scheduler thread:
-3 workers ⇒ every company scraped 3× per tick, 3× the LLM spend, 3× the load on
-target sites.
+Still open: OpenTelemetry instrumentation of Gunicorn (item 6 — currently runs
+plain, no `opentelemetry-instrument` wrapper).
 
-- [ ] Add a management command `manage.py run_scheduler` that calls
-      `app.scheduler._run_loop()` (already module-level in `scheduler.py`).
-- [ ] Change `_should_start_scheduler()` so it never auto-starts under WSGI —
-      gate the non-`manage.py` branch on an env var (e.g.
-      `HENRY_RUN_SCHEDULER=1`) that only the management command / its systemd
-      unit sets. Keep the existing `runserver` + `RUN_MAIN` behaviour for local
-      dev.
-- [ ] Run the command as its own single-instance systemd service (item 4).
+## 3. Move the scheduler out of the web process  ✅ done (branch `prod-serve`)
+
+`apps.py:_should_start_scheduler()` used to return `True` unconditionally under
+any WSGI server — every Gunicorn worker would start its own scheduler thread
+(Nx the scrapes / LLM spend / load on target sites per tick).
+
+- [x] `manage.py run_scheduler` — new management command
+      (`app/management/commands/run_scheduler.py`), runs `scheduler._run_loop()`
+      in the foreground as its own process.
+- [x] `_should_start_scheduler()` WSGI branch now returns
+      `os.environ.get("HENRY_RUN_SCHEDULER") == "1"` (default off). `runserver` +
+      `RUN_MAIN` dev behaviour unchanged. `server-start.sh` sets the env var only
+      on the `run_scheduler` subprocess, never on Gunicorn.
+- [x] Coverage: `ShouldStartSchedulerTest` in `tests/test_scheduler.py`.
+- [ ] Run as its own single-instance systemd service (item 4).
 
 Benefit beyond the bug fix: restart the web app without interrupting an
 in-progress scrape, and vice versa.
 
 ## 4. Process supervision with systemd (replaces tmux)
 
-tmux doesn't restart on crash or start on boot. Create three units (Postgres and
-Caddy run as their own distro services):
+tmux doesn't restart on crash or start on boot. `server-start.sh` is the interim
+supervisor; replace it with units (Postgres runs as its own distro service;
+cloudflared as its own via `cloudflared service install`):
 
 - [ ] `henry-web.service` — Gunicorn. `Restart=always`,
       `WorkingDirectory=/srv/henry/backend` (**required** — `load_config()`
@@ -96,6 +104,8 @@ Caddy run as their own distro services):
       `EnvironmentFile=/srv/henry/backend/.env`
 - [ ] `henry-scheduler.service` — `manage.py run_scheduler`. `Restart=always`,
       `Environment=HENRY_RUN_SCHEDULER=1`, same `WorkingDirectory`.
+- [ ] `henry-caddy.service` — `caddy run --config /srv/henry/Caddyfile
+      --adapter caddyfile`, with the `HENRY_*` env vars set. `Restart=always`.
 - [ ] `henry-backup.timer` + `henry-backup.service` — item 5.
 - [ ] `systemctl enable --now` all of them. `WantedBy=multi-user.target` for
       boot start.

@@ -1,0 +1,41 @@
+# Local router for the home-server deployment: serves the built SPA and proxies
+# API / admin / static requests to Gunicorn. It listens on plain HTTP on a local
+# port only - TLS is terminated upstream by Cloudflare, and cloudflared connects
+# to this port over the tunnel. (If you ever expose this box directly instead,
+# change the site address below to {$HENRY_DOMAIN} so Caddy does Let's Encrypt,
+# and drop the X-Forwarded-Proto override.)
+#
+# Values come from the environment (server-start.sh exports them):
+#   HENRY_HTTP_PORT      - local port Caddy listens on (default 8080)
+#   HENRY_FRONTEND_DIST  - absolute path to the built frontend (frontend/dist)
+#   HENRY_BACKEND_BIND   - host:port Gunicorn listens on (default 127.0.0.1:8000)
+#
+# Run:  caddy run --config Caddyfile --adapter caddyfile
+
+{
+	# No automatic HTTPS - this instance only ever serves the tunnel over HTTP.
+	auto_https off
+	admin off
+}
+
+:{$HENRY_HTTP_PORT:8080} {
+	encode gzip
+
+	# API, Django admin, and collected static assets are served by Gunicorn.
+	# The external connection is always HTTPS (Cloudflare edge), so tell Django
+	# that explicitly - Caddy itself was reached over plain HTTP here.
+	@backend path /api/* /controls/* /static/*
+	handle @backend {
+		reverse_proxy {$HENRY_BACKEND_BIND:127.0.0.1:8000} {
+			header_up X-Forwarded-Proto https
+		}
+	}
+
+	# Everything else is the single-page app: serve the file if it exists,
+	# otherwise fall back to index.html so client-side routing works.
+	handle {
+		root * {$HENRY_FRONTEND_DIST}
+		try_files {path} /index.html
+		file_server
+	}
+}
