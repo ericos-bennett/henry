@@ -39,7 +39,7 @@ fi
 "$REPO_ROOT/infra/backup-db.sh" teardown || echo "WARNING: backup failed - continuing with teardown" >&2
 
 echo "==> Removing weekly-maintenance cron entry"
-"$REPO_ROOT/infra/maintenance-cron.sh" remove
+"$REPO_ROOT/infra/maintenance.sh" remove
 
 for svc in "${SERVICES[@]}"; do
 	echo "==> Stopping/disabling $svc"

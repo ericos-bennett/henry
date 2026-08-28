@@ -103,7 +103,7 @@ sudo systemctl restart henry-web.service henry-scheduler.service henry-caddy.ser
 
 # --- 4. weekly-maintenance cron -------------------------------------------
 echo "==> Installing weekly-maintenance cron entry"
-"$REPO_ROOT/infra/maintenance-cron.sh" install
+"$REPO_ROOT/infra/maintenance.sh" install
 
 # --- 5. report -------------------------------------------------------------
 sleep 2

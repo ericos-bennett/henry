@@ -3,15 +3,15 @@
 # Delete raw HTML scrape snapshots under backend/data/<company_id>/raw/ and prune
 # any directories left empty.
 #
-#   ./clear-snapshots.sh        delete every snapshot
-#   ./clear-snapshots.sh 7      delete only snapshots older than 7 days
+#   infra/clear-snapshots.sh        delete every snapshot
+#   infra/clear-snapshots.sh 7      delete only snapshots older than 7 days
 #
-# The weekly-maintenance cron job calls this with a retention window; run it with
-# no argument for a full wipe.
+# infra/weekly-maintenance.sh calls this with a retention window; run it with no
+# argument for a full wipe.
 set -euo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-DATA_DIR="backend/data"
+DATA_DIR="$REPO_ROOT/backend/data"
 DAYS="${1:-}"
 
 mtime_args=()
