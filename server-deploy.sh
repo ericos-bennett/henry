@@ -11,7 +11,7 @@
 # Deploys the working tree as-is - `git pull` yourself first to pick up new code.
 #
 # A pg_dump snapshot is taken before migrations run (deploy/backup-db.sh, keeps
-# the 10 most recent in ~/henry-backups or $HENRY_BACKUP_DIR). A failed backup
+# the 10 most recent in ~/backups/henry or $HENRY_BACKUP_DIR). A failed backup
 # aborts the deploy.
 #
 # Postgres and cloudflared are managed separately (their own services).

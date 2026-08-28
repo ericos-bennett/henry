@@ -2,7 +2,7 @@
 #
 # Snapshot the Henry Postgres database with pg_dump. Called by server-deploy.sh
 # (before migrations) and server-teardown.sh. Keeps the 10 most recent dumps in
-# $HENRY_BACKUP_DIR (default ~/henry-backups) and prunes older ones.
+# $HENRY_BACKUP_DIR (default ~/backups/henry) and prunes older ones.
 #
 # Usage:  deploy/backup-db.sh [label]
 #   label is an optional filename suffix (e.g. "deploy", "teardown").
@@ -20,7 +20,7 @@ set +a
 [ -n "${DATABASE_URL:-}" ] || { echo "ERROR: DATABASE_URL not set in backend/.env" >&2; exit 1; }
 command -v pg_dump >/dev/null || { echo "ERROR: pg_dump not found on PATH" >&2; exit 1; }
 
-BACKUP_DIR="${HENRY_BACKUP_DIR:-$HOME/henry-backups}"
+BACKUP_DIR="${HENRY_BACKUP_DIR:-$HOME/backups/henry}"
 mkdir -p "$BACKUP_DIR"
 
 stamp="$(date +%Y%m%d-%H%M%S)"
