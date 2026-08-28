@@ -10,7 +10,7 @@
 #
 # Deploys the working tree as-is - `git pull` yourself first to pick up new code.
 #
-# A pg_dump snapshot is taken before migrations run (deploy/backup-db.sh, keeps
+# A pg_dump snapshot is taken before migrations run (infra/backup-db.sh, keeps
 # the 10 most recent in ~/backups/henry or $HENRY_BACKUP_DIR). A failed backup
 # aborts the deploy.
 #
@@ -57,7 +57,7 @@ npm --prefix frontend ci
 npm --prefix frontend run build
 
 # --- 2. migrate ------------------------------------------------------------------
-"$REPO_ROOT/deploy/backup-db.sh" deploy
+"$REPO_ROOT/infra/backup-db.sh" deploy
 
 echo "==> Applying migrations"
 ( cd backend && uv run --no-sync python manage.py migrate --noinput )
@@ -92,9 +92,9 @@ WantedBy=multi-user.target
 UNIT
 }
 
-write_unit henry-web.service       "Henry web (Gunicorn)"     "$REPO_ROOT/deploy/run-web.sh"       "$REPO_ROOT/backend"
-write_unit henry-scheduler.service "Henry scrape scheduler"   "$REPO_ROOT/deploy/run-scheduler.sh" "$REPO_ROOT/backend"
-write_unit henry-caddy.service     "Henry HTTP router (Caddy)" "$REPO_ROOT/deploy/run-caddy.sh"     "$REPO_ROOT"
+write_unit henry-web.service       "Henry web (Gunicorn)"     "$REPO_ROOT/infra/run-web.sh"       "$REPO_ROOT/backend"
+write_unit henry-scheduler.service "Henry scrape scheduler"   "$REPO_ROOT/infra/run-scheduler.sh" "$REPO_ROOT/backend"
+write_unit henry-caddy.service     "Henry HTTP router (Caddy)" "$REPO_ROOT/infra/run-caddy.sh"     "$REPO_ROOT"
 
 echo "==> Reloading systemd + (re)starting services"
 sudo systemctl daemon-reload
@@ -103,7 +103,7 @@ sudo systemctl restart henry-web.service henry-scheduler.service henry-caddy.ser
 
 # --- 4. weekly-maintenance cron -------------------------------------------
 echo "==> Installing weekly-maintenance cron entry"
-"$REPO_ROOT/deploy/maintenance-cron.sh" install
+"$REPO_ROOT/infra/maintenance-cron.sh" install
 
 # --- 5. report -------------------------------------------------------------
 sleep 2

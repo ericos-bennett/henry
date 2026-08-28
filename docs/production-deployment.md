@@ -49,7 +49,7 @@ browser → Cloudflare edge (TLS) → cloudflared tunnel → Caddy :8080 (HTTP) 
 
 New at repo root:
 
-- **`deploy/run-{web,scheduler,caddy}.sh`** — the per-service launchers
+- **`infra/run-{web,scheduler,caddy}.sh`** — the per-service launchers
   (Gunicorn / `manage.py run_scheduler` / Caddy). Used as the systemd `ExecStart`
   (item 4). Each sources `backend/.env`; none of them run cloudflared (its own
   service).
@@ -82,7 +82,7 @@ any WSGI server — every Gunicorn worker would start its own scheduler thread
       in the foreground as its own process.
 - [x] `_should_start_scheduler()` WSGI branch now returns
       `os.environ.get("HENRY_RUN_SCHEDULER") == "1"` (default off). `runserver` +
-      `RUN_MAIN` dev behaviour unchanged. Only `deploy/run-scheduler.sh` sets the
+      `RUN_MAIN` dev behaviour unchanged. Only `infra/run-scheduler.sh` sets the
       env var; Gunicorn never sees it.
 - [x] Coverage: `ShouldStartSchedulerTest` in `tests/test_scheduler.py`.
 - [x] Runs as its own single-instance systemd service `henry-scheduler` (item 4).
@@ -96,12 +96,12 @@ Two scripts at repo root drive the whole lifecycle; Postgres and cloudflared
 stay as their own services.
 
 - **`server-deploy.sh`** — `uv sync` → `playwright install chromium` → build
-  frontend → **`deploy/backup-db.sh`** (item 5) → `migrate` → `collectstatic` →
+  frontend → **`infra/backup-db.sh`** (item 5) → `migrate` → `collectstatic` →
   (re)write the three unit files → `daemon-reload` → `enable` + `restart`.
   Deploys the working tree as-is (`git pull` yourself first). Takes no arguments.
   Run as the app user; it `sudo`s only for the systemd parts. Warns if the
   system timezone is UTC (scheduler matches cron against server-local time).
-- **`server-teardown.sh`** — `deploy/backup-db.sh` (final snapshot) → `disable
+- **`server-teardown.sh`** — `infra/backup-db.sh` (final snapshot) → `disable
   --now` + delete the three unit files + `daemon-reload` + `reset-failed`.
   Prompts unless `--yes`. Leaves cloudflared, Postgres, the repo, and the DB
   contents untouched.
@@ -111,36 +111,36 @@ absolute paths + `PATH` baked in, `Restart=always`, `WantedBy=multi-user.target`
 
 | unit | ExecStart | WorkingDirectory |
 |---|---|---|
-| `henry-web.service` | `deploy/run-web.sh` (Gunicorn) | `backend/` — `load_config()` reads `config/settings.yaml` relative to CWD |
-| `henry-scheduler.service` | `deploy/run-scheduler.sh` (`manage.py run_scheduler`, `HENRY_RUN_SCHEDULER=1`) | `backend/` |
-| `henry-caddy.service` | `deploy/run-caddy.sh` | repo root |
+| `henry-web.service` | `infra/run-web.sh` (Gunicorn) | `backend/` — `load_config()` reads `config/settings.yaml` relative to CWD |
+| `henry-scheduler.service` | `infra/run-scheduler.sh` (`manage.py run_scheduler`, `HENRY_RUN_SCHEDULER=1`) | `backend/` |
+| `henry-caddy.service` | `infra/run-caddy.sh` | repo root |
 
-The `deploy/run-*.sh` launchers are the single source of truth for how each
+The `infra/run-*.sh` launchers are the single source of truth for how each
 service starts. Config comes from `backend/.env` (sourced by each launcher), not
 an `EnvironmentFile`. To run one in the foreground for debugging:
-`sudo systemctl stop henry-web && ./deploy/run-web.sh`.
+`sudo systemctl stop henry-web && ./infra/run-web.sh`.
 
 Logs → journald (`LOGGING` writes to stdout): `journalctl -u henry-web -f`.
 
 `server-start.sh` also installs a weekly-maintenance entry in the deploying user's
-crontab (`deploy/maintenance-cron.sh install`); `server-stop.sh` removes it. See
+crontab (`infra/maintenance-cron.sh install`); `server-stop.sh` removes it. See
 items 5 and 7.
 
 ## 5. Backups
 
 Context: a schema migration wiped the dev DB once already.
 
-- [x] **`deploy/backup-db.sh`** — `pg_dump -Fc` to `$HENRY_BACKUP_DIR`
+- [x] **`infra/backup-db.sh`** — `pg_dump -Fc` to `$HENRY_BACKUP_DIR`
       (default `~/backups/henry`), filename `henry-<timestamp>[-<label>].dump`,
       then prunes to the **10 most recent**. `server-deploy.sh` runs it (labelled
       `deploy`) right before `migrate` and aborts if it fails; `server-teardown.sh`
       runs it (labelled `teardown`) but continues on failure.
 - [x] **Decouple `migrate` from service start** — item 4. `migrate` / build /
       backup all live in `server-deploy.sh`; the units just run the app.
-- [x] **Scheduled** dumps — `deploy/weekly-maintenance.sh` runs
-      `deploy/backup-db.sh weekly` (+ snapshot pruning, item 7) from the deploying
+- [x] **Scheduled** dumps — `infra/weekly-maintenance.sh` runs
+      `infra/backup-db.sh weekly` (+ snapshot pruning, item 7) from the deploying
       user's crontab. `server-start.sh` installs the entry via
-      `deploy/maintenance-cron.sh install` (schedule `HENRY_MAINTENANCE_CRON`,
+      `infra/maintenance-cron.sh install` (schedule `HENRY_MAINTENANCE_CRON`,
       default `0 4 * * 0`); `server-stop.sh` removes it by marker block. Chosen
       over a `henry-backup.timer` to keep one mechanism and reuse the existing
       10-most-recent prune. Missed if the box is off across the scheduled hour —
@@ -174,7 +174,7 @@ Context: a schema migration wiped the dev DB once already.
       `tests/test_api_health.py`.
 - [x] Age-based raw-HTML snapshot retention. `clear-snapshots.sh` takes an
       optional `N` = delete only files older than N days (no arg = wipe all).
-      `deploy/weekly-maintenance.sh` calls it with `HENRY_SNAPSHOT_RETENTION_DAYS`
+      `infra/weekly-maintenance.sh` calls it with `HENRY_SNAPSHOT_RETENTION_DAYS`
       (default 7); runs weekly from the same cron entry as the DB dump (item 5).
 - [ ] Consider a `JobPosting` retention policy once history accumulates — see
       roadmap "Open questions / risks".

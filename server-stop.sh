@@ -2,7 +2,7 @@
 #
 # Stop Henry on the home server and remove its systemd units.
 #
-# Takes a final pg_dump snapshot (deploy/backup-db.sh), removes the
+# Takes a final pg_dump snapshot (infra/backup-db.sh), removes the
 # weekly-maintenance cron entry, then stops and disables henry-web /
 # henry-scheduler / henry-caddy, deletes their unit files, and reloads systemd.
 # Re-run server-start.sh to bring it all back.
@@ -36,10 +36,10 @@ if [ "$ASSUME_YES" -eq 0 ]; then
 fi
 
 # Final snapshot. Don't let a backup failure block the teardown.
-"$REPO_ROOT/deploy/backup-db.sh" teardown || echo "WARNING: backup failed - continuing with teardown" >&2
+"$REPO_ROOT/infra/backup-db.sh" teardown || echo "WARNING: backup failed - continuing with teardown" >&2
 
 echo "==> Removing weekly-maintenance cron entry"
-"$REPO_ROOT/deploy/maintenance-cron.sh" remove
+"$REPO_ROOT/infra/maintenance-cron.sh" remove
 
 for svc in "${SERVICES[@]}"; do
 	echo "==> Stopping/disabling $svc"

@@ -4,7 +4,7 @@
 # (before migrations) and server-teardown.sh. Keeps the 10 most recent dumps in
 # $HENRY_BACKUP_DIR (default ~/backups/henry) and prunes older ones.
 #
-# Usage:  deploy/backup-db.sh [label]
+# Usage:  infra/backup-db.sh [label]
 #   label is an optional filename suffix (e.g. "deploy", "teardown").
 #
 # Exits non-zero if the dump fails - callers decide whether that's fatal.

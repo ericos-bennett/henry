@@ -112,7 +112,7 @@ henry/
 ├── stop-all.sh                 # tears down the above
 ├── clear-snapshots.sh          # deletes raw HTML debug dumps under backend/data/ (optional age arg: keep last N days)
 ├── server-start.sh / server-stop.sh   # home-server deploy: systemd units + weekly-maintenance cron
-├── deploy/                     # per-service launchers, backup-db.sh, weekly-maintenance.sh, maintenance-cron.sh
+├── infra/                     # per-service launchers, backup-db.sh, weekly-maintenance.sh, maintenance-cron.sh
 ├── backend/
 │   ├── backend-start.sh        # installs deps, migrates, starts the dev server
 │   ├── manage.py               # Django management commands (migrate, makemigrations, createsuperuser, etc.)

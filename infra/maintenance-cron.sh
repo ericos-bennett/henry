@@ -4,8 +4,8 @@
 # The one place the schedule is defined; server-start.sh calls `install`,
 # server-stop.sh calls `remove` (which matches the marker block, not the schedule).
 #
-#   deploy/maintenance-cron.sh install
-#   deploy/maintenance-cron.sh remove
+#   infra/maintenance-cron.sh install
+#   infra/maintenance-cron.sh remove
 #
 # Schedule / log path come from backend/.env (HENRY_MAINTENANCE_CRON,
 # HENRY_MAINTENANCE_LOG); see backend/.env.example for defaults.
@@ -40,7 +40,7 @@ case "$ACTION" in
 			# cron runs with a minimal PATH; carry the deployer's so backup-db.sh
 			# finds pg_dump (same approach as the systemd units).
 			printf 'PATH=%s\n' "$PATH"
-			printf '%s %s/deploy/weekly-maintenance.sh >> %s 2>&1\n' \
+			printf '%s %s/infra/weekly-maintenance.sh >> %s 2>&1\n' \
 				"$schedule" "$REPO_ROOT" "$log"
 			printf '%s\n' "$END"
 		} | $CRONTAB -
