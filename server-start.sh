@@ -101,7 +101,11 @@ sudo systemctl daemon-reload
 sudo systemctl enable henry-web.service henry-scheduler.service henry-caddy.service
 sudo systemctl restart henry-web.service henry-scheduler.service henry-caddy.service
 
-# --- 4. report -------------------------------------------------------------
+# --- 4. weekly-maintenance cron -------------------------------------------
+echo "==> Installing weekly-maintenance cron entry"
+"$REPO_ROOT/deploy/maintenance-cron.sh" install
+
+# --- 5. report -------------------------------------------------------------
 sleep 2
 echo
 for svc in henry-web henry-scheduler henry-caddy; do

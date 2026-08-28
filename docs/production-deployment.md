@@ -1,10 +1,9 @@
 # Production Deployment Plan (home server / mini PC)
 
-Status: **in progress** — items 1–4 done, `/api/health` done, deploy/teardown DB
-backups done; remaining: scheduled + off-box backups (5), mini-PC resource tuning
-(6), snapshot/JobPosting retention (7). Target: run Henry as a persistent
-always-on service on a mini PC, reachable at `henry.fourthwallride.com` via a
-Cloudflare tunnel.
+Status: **in progress** — items 1–5 done, `/api/health` + weekly snapshot
+retention done; remaining: off-box backup copy (5), mini-PC resource tuning (6),
+`JobPosting` retention (7). Target: run Henry as a persistent always-on service
+on a mini PC, reachable at `henry.fourthwallride.com` via a Cloudflare tunnel.
 
 This is the gap between the current dev setup (`runserver` + Vite dev server in
 tmux, `DEBUG=True`, in-process scheduler thread, no backups) and a deployment
@@ -123,8 +122,9 @@ an `EnvironmentFile`. To run one in the foreground for debugging:
 
 Logs → journald (`LOGGING` writes to stdout): `journalctl -u henry-web -f`.
 
-DB snapshots on every deploy/teardown are covered (item 5); a scheduled
-`henry-backup.timer` is still open.
+`server-start.sh` also installs a weekly-maintenance entry in the deploying user's
+crontab (`deploy/maintenance-cron.sh install`); `server-stop.sh` removes it. See
+items 5 and 7.
 
 ## 5. Backups
 
@@ -137,8 +137,14 @@ Context: a schema migration wiped the dev DB once already.
       runs it (labelled `teardown`) but continues on failure.
 - [x] **Decouple `migrate` from service start** — item 4. `migrate` / build /
       backup all live in `server-deploy.sh`; the units just run the app.
-- [ ] **Scheduled** dumps (`henry-backup.timer`), not just deploy/teardown — a
-      box that isn't redeployed for weeks has weeks-old backups.
+- [x] **Scheduled** dumps — `deploy/weekly-maintenance.sh` runs
+      `deploy/backup-db.sh weekly` (+ snapshot pruning, item 7) from the deploying
+      user's crontab. `server-start.sh` installs the entry via
+      `deploy/maintenance-cron.sh install` (schedule `HENRY_MAINTENANCE_CRON`,
+      default `0 4 * * 0`); `server-stop.sh` removes it by marker block. Chosen
+      over a `henry-backup.timer` to keep one mechanism and reuse the existing
+      10-most-recent prune. Missed if the box is off across the scheduled hour —
+      no catch-up.
 - [ ] **Off-box copy**: rsync a recent dump to another machine or object store.
       A dead SSD takes local-only backups with it.
 - [ ] Any future migration that drops/flushes rows: take an explicit named dump
@@ -166,8 +172,10 @@ Context: a schema migration wiped the dev DB once already.
 - [x] Unauthenticated `GET /api/health` → `{"status": "ok"}` for Caddy / systemd
       / uptime checks (`api.py`, `auth=None`, no DB access). Test in
       `tests/test_api_health.py`.
-- [ ] Schedule `clear-snapshots.sh` (raw HTML dumps under `backend/data/*/raw/`
-      grow unbounded) on a weekly systemd timer, or add age-based retention.
+- [x] Age-based raw-HTML snapshot retention. `clear-snapshots.sh` takes an
+      optional `N` = delete only files older than N days (no arg = wipe all).
+      `deploy/weekly-maintenance.sh` calls it with `HENRY_SNAPSHOT_RETENTION_DAYS`
+      (default 7); runs weekly from the same cron entry as the DB dump (item 5).
 - [ ] Consider a `JobPosting` retention policy once history accumulates — see
       roadmap "Open questions / risks".
 
