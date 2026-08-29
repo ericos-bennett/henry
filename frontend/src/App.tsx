@@ -343,6 +343,7 @@ function App() {
       <div className="company-row page-header">
         <h1>Henry</h1>
         <div className="actions">
+          <span className="muted">{user.username}</span>
           <button onClick={() => setSettingsOpen(true)}>Settings</button>
           <button onClick={handleLogout}>Sign Out</button>
         </div>
